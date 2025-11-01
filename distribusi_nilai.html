@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Distribusi Nilai — Autoload data/all.csv + Rentang Waktu</title>
+  <style>
+    :root{
+      --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --border:#e2e8f0;
+      --accent:#2563eb; --accent-ink:#ffffff; --shadow:0 1px 2px rgba(15,23,42,.06);
+      --accent-2:#93c5fd;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif}
+
+    /* ===== App Shell / Sidebar (reusable) ===== */
+    .app-shell{display:grid;grid-template-columns:280px 1fr;min-height:100dvh}
+    .app-shell.collapsed{grid-template-columns:100px 1fr}
+    .app-sidebar{position:sticky;top:0;height:100dvh;padding:12px}
+    .sb-card{height:100%;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);display:flex;flex-direction:column}
+    .sb-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--border)}
+    .sb-brand{display:flex;align-items:center;gap:10px}
+    .sb-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+    .sb-title{font-weight:800}
+    .sb-toggle{cursor:pointer;border:1px solid var(--border);background:#fff;border-radius:10px;padding:8px}
+    .sb-nav{padding:12px;display:grid;gap:8px;overflow:auto}
+    .sb-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--ink);text-decoration:none;font-weight:600}
+    .sb-link:hover{border-color:#cbd5e1}
+    .sb-link.active{background:var(--accent);border-color:transparent;color:var(--accent-ink)}
+    .sb-ico{width:22px;height:22px;display:inline-grid;place-items:center}
+    .sb-ico svg{width:20px;height:20px}
+    .sb-label{white-space:nowrap}
+    .sb-help{margin-top:auto;padding:12px;border-top:1px dashed var(--border);font-size:13px;color:var(--muted)}
+    .app-shell.collapsed .sb-title,.app-shell.collapsed .sb-label,.app-shell.collapsed .sb-help{display:none}
+    .app-shell.collapsed .sb-head{justify-content:center}
+
+    /* ===== Main ===== */
+    .app-main{padding:20px}
+    header.main{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+    h1{font-size:22px;margin:0}
+    .row{display:flex;gap:12px;flex-wrap:wrap}
+
+    .card{position:relative;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+    .pad{padding:16px}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;background:var(--accent-2);color:#0b215a;font-weight:600;font-size:12px}
+
+    button{padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--ink);outline:none;transition:border-color .15s, box-shadow .15s}
+    button:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(37,99,235,.15)}
+    .btn{cursor:pointer;font-weight:600}
+    .btn-primary{background:var(--accent);color:#fff;border:none}
+    .btn-primary:hover{filter:brightness(.95)}
+    .btn-ghost{background:transparent;border:1px dashed var(--border)}
+
+    canvas{width:100%;height:480px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+    .legend-item{display:flex;align-items:center;gap:6px;font-size:12px}
+    .swatch{width:12px;height:12px;border-radius:3px;border:1px solid var(--border)}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* Download PNG button bottom-right */
+    .download-wrap{position:absolute;right:16px;bottom:16px}
+
+    /* Modal */
+    .modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;place-items:center;padding:16px;z-index:50}
+    .modal{width:min(820px,100%);background:#fff;border-radius:16px;border:1px solid var(--border);box-shadow:0 10px 30px rgba(15,23,42,.25)}
+    .modal header{padding:16px;border-bottom:1px solid var(--border)}
+    .modal .content{padding:16px;display:grid;gap:12px}
+    .grid-3{display:grid;gap:12px;grid-template-columns:1fr 1fr 1fr}
+    .grid-2{display:grid;gap:12px;grid-template-columns:1fr 1fr}
+    label{font-weight:600;margin-bottom:6px;display:block}
+    select,input[type="text"],input[type="date"]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:var(--ink)}
+    .modal footer{display:flex;gap:10px;justify-content:flex-end;padding:16px;border-top:1px solid var(--border)}
+  </style>
+</head>
+<body>
+
+<!-- ====== APP SHELL + SIDEBAR (versi terbaru) ====== -->
+<div id="APP" class="app-shell">
+  <aside class="app-sidebar" aria-label="Navigasi Layanan">
+    <div class="sb-card">
+      <div class="sb-head">
+        <div class="sb-brand"><div class="sb-title">TVRI on <span class="x">𝕏</span></div></div>
+        <button id="sbToggle" class="sb-toggle" title="Sembunyikan/Expand sidebar" aria-expanded="true">⟨⟩</button>
+      </div>
+        <nav class="sb-nav">
+          <a class="sb-link" href="index.html" title="Data Viewer"><span class="sb-ico">{#icon-doc#}</span><span class="sb-label">Data Viewer</span></a>
+          <a class="sb-link" href="distribusi_nilai.html" title="Distribusi Nilai"><span class="sb-ico">{#icon-chart#}</span><span class="sb-label">Distribusi Nilai</span></a>
+          <a class="sb-link" href="persilangan_nilai.html" title="Persilangan Nilai"><span class="sb-ico">{#icon-grid#}</span><span class="sb-label">Persilangan Nilai</span></a>
+          <a class="sb-link" href="timeline_distribusi.html" title="Analisis Timeline"><span class="sb-ico">{#icon-trend#}</span><span class="sb-label">Analisis Timeline</span></a>
+          <a class="sb-link" href="analisis_interaksi.html" title="Analisis Interaksi"><span class="sb-ico">{#icon-network#}</span><span class="sb-label">Analisis Interaksi</span></a>
+      </nav>
+      <div class="sb-help">Folder <b>data/</b> harus sejajar dengan file ini. Pastikan <code>data/all.csv</code> tersedia pada GitHub Pages.</div>
+    </div>
+  </aside>
+
+  <!-- ====== KONTEN DISTRIBUSI ====== -->
+  <main class="app-main">
+    <header class="main">
+      <div class="row">
+        <h1>Distribusi Nilai</h1>
+      </div>
+      <div class="row">
+        <span class="badge" id="dataSourceBadge">Sumber data: data/all.csv</span>
+        <button id="btnConfig" class="btn">Konfigurasi</button>
+        <button id="run" class="btn btn-primary" title="Hitung secara manual (opsional)">Hitung</button>
+      </div>
+    </header>
+
+    <section class="card pad">
+      <div id="summary" class="row" style="margin-bottom:8px"></div>
+      <canvas id="chart" width="1000" height="480" aria-label="Chart"></canvas>
+      <div id="legend" class="legend"></div>
+      <div id="stats" class="row muted" style="margin-top:8px">
+        <span>Total baris: <b id="statRows">-</b></span>
+        <span>Baris cocok: <b id="statMatch">-</b></span>
+        <span>Nilai unik: <b id="statUnique">-</b></span>
+      </div>
+      <div class="download-wrap">
+        <button id="downloadPng" class="btn btn-ghost" title="Unduh grafik (PNG)">Unduh PNG</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- ====== Modal Konfigurasi ====== -->
+<div class="modal-backdrop" id="cfgBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="cfgTitle">
+    <header>
+      <h3 id="cfgTitle" style="margin:0">Konfigurasi Distribusi</h3>
+    </header>
+    <div class="content">
+      <div class="grid-3">
+        <div>
+          <label for="targetCol">Kolom Distribusi</label>
+          <select id="targetCol"><option value="" disabled selected>Pilih kolom</option></select>
+        </div>
+        <div>
+          <label for="filterCol">Kolom Kondisi</label>
+          <select id="filterCol">
+            <option value="__ALL__" selected>— Semua Data —</option>
+          </select>
+        </div>
+        <div>
+          <label for="filterVal">Nilai =</label>
+          <input id="filterValInput" type="text" placeholder="ketik kata untuk kolom teks" style="display:none" />
+          <select id="filterVal"><option value="" disabled selected>Pilih nilai</option></select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label for="dateStart">Mulai (created_at)</label>
+          <input id="dateStart" type="date" />
+        </div>
+        <div>
+          <label for="dateEnd">Selesai (created_at)</label>
+          <input id="dateEnd" type="date" />
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div>
+          <label for="chartType">Tipe Grafik</label>
+          <select id="chartType">
+            <option value="bar" selected>Bar (Horizontal)</option>
+            <option value="pie">Pie Chart</option>
+          </select>
+        </div>
+        <div class="muted" style="align-self:end">Jika tanggal kosong, sistem memakai seluruh rentang data.</div>
+        <div></div>
+      </div>
+    </div>
+    <footer>
+      <button id="cfgCancel" class="btn">Batal</button>
+      <button id="cfgApply" class="btn btn-primary">Terapkan</button>
+    </footer>
+  </div>
+</div>
+
+<script>
+  /* ===== Sidebar Icons (inline SVG) ===== */
+  const ICONS = {
+    chart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7" rx="1"/><rect x="12" y="6" width="3" height="11" rx="1"/><rect x="17" y="12" width="3" height="5" rx="1"/></svg>`,
+    grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>`,
+    trend:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M21 21H3"/></svg>`,
+    cloud:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.3-1.8A4 4 0 0 0 7 19h10.5z"/></svg>`,
+    doc:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6M8 9h3"/></svg>`,
+    cog:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09c.66 0 1.25-.39 1.51-1 .3-.66.16-1.43-.33-1.94l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.5.5 1.27.63 1.94.33.61-.27 1-.86 1-1.51V3a2 2 0 1 1 4 0v.09c0 .66.39 1.25 1 1.51.67.3 1.44.16 1.94-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06c-.47.47-.61 1.17-.33 1.78.24.52.73.86 1.29.86H21a2 2 0 1 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
+    network: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="2"/> <circle cx="4"  cy="12" r="2"/> <circle cx="12" cy="4"  r="2"/> <circle cx="20" cy="12" r="2"/> <circle cx="12" cy="20" r="2"/> <line x1="6"  y1="12" x2="10" y2="12"/> <line x1="12" y1="6"  x2="12" y2="10"/> <line x1="14" y1="12" x2="18" y2="12"/> <line x1="12" y1="14" x2="12" y2="18"/> </svg>`,
+  };
+  document.querySelectorAll('.sb-ico').forEach(el=>{
+    const key = /\{#icon-([a-z]+)#\}/.exec(el.innerHTML);
+    el.innerHTML = (key && ICONS[key[1]]) ? ICONS[key[1]] : ICONS.chart;
+  });
+
+  const APP = document.getElementById('APP');
+  const SB_TOGGLE = document.getElementById('sbToggle');
+  function applySBState(){
+    const collapsed = localStorage.getItem('sb-collapsed') === '1';
+    APP.classList.toggle('collapsed', collapsed);
+    SB_TOGGLE.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+  SB_TOGGLE.addEventListener('click',()=>{
+    const next = !(localStorage.getItem('sb-collapsed') === '1');
+    localStorage.setItem('sb-collapsed', next ? '1' : '0');
+    applySBState();
+  });
+  applySBState();
+
+  (function autoActive(){
+    const path = location.pathname.split('/').pop();
+    document.querySelectorAll('.sb-link').forEach(a=>{
+      const fname = (a.getAttribute('href')||'').split('/').pop();
+      if(fname && fname === path){ a.classList.add('active'); }
+    });
+  })();
+
+  /* ===== CSV Parser ===== */
+  function parseCSV(text){
+    const rows = []; let i=0, cur='', inQ=false, row=[];
+    const pushCell=()=>{ row.push(cur); cur=''; };
+    const pushRow =()=>{ rows.push(row); row=[]; };
+    while(i<text.length){ const ch=text[i];
+      if(inQ){ if(ch==='"'){ if(text[i+1]==='"'){ cur+='"'; i++; } else { inQ=false; } } else { cur+=ch; } }
+      else { if(ch==='"') inQ=true; else if(ch===',') pushCell(); else if(ch==='\n'){ pushCell(); pushRow(); } else if(ch!=='\r'){ cur+=ch; } }
+      i++; }
+    pushCell(); if(row.length>1||rows.length===0) pushRow(); if(rows[0]&&rows[0][0]) rows[0][0]=rows[0][0].replace(/^\uFEFF/,'');
+    return rows;
+  }
+  function rowsToObjects(rows){ const header=rows[0]||[]; const out=[]; for(let r=1;r<rows.length;r++){ const obj={}; for(let c=0;c<header.length;c++) obj[header[c]] = rows[r][c] ?? ''; const any=Object.values(obj).some(v=>(v??'').toString().trim()!==''); if(any) out.push(obj);} return {header,data:out}; }
+
+  function parseMultiValue(cell){ if(cell==null) return []; const raw=String(cell).trim(); if(!raw) return []; if(raw.startsWith('[')&&raw.endsWith(']')){ try{const arr=JSON.parse(raw); return Array.isArray(arr)?arr.map(x=>String(x).trim()).filter(Boolean):[raw];}catch(e){} } const re=/[\s]*[;,|][\s]*/; return raw.split(re).map(s=>s.replace(/^\"|\"$/g,'').trim()).filter(Boolean); }
+  function containsIgnoreCase(haystack, needle){ if(needle==null) return false; const n=String(needle).trim(); if(!n) return false; return String(haystack??'').toLowerCase().includes(n.toLowerCase()); }
+
+  // ==== Date helpers (created_at) ====
+  function parseCreatedAt(v){
+    if(!v) return null;
+    const s=String(v).trim();
+    // coba ISO langsung
+    let d=new Date(s);
+    if(!isFinite(d)){
+      // coba "YYYY-MM-DD HH:mm:ss" -> ISO
+      const t=s.replace(' ', 'T');
+      d=new Date(t);
+      if(!isFinite(d)) return null;
+    }
+    return d;
+  }
+  function toDateInputValue(d){ const pad=n=>String(n).padStart(2,'0'); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+  function rowMatches(row, col, val){
+    if(col==='__ALL__') return true; const cell=row[col]; if(cell==null) return false;
+    if(col==='text'||col==='parent_tweet_text'){ return containsIgnoreCase(cell,val); }
+    const vals=parseMultiValue(cell); if(vals.length===0) return String(cell).trim()===String(val).trim(); const t=String(val).trim(); return vals.some(v=>String(v).trim()===t);
+  }
+
+  function uniqueValues(data,col){ const set=new Set(); for(const row of data){ const parts=parseMultiValue(row[col]); if(parts.length) parts.forEach(p=>set.add(String(p))); else if(row[col]!=null && String(row[col]).trim()!=='') set.add(String(row[col]).trim()); } return Array.from(set).sort((a,b)=>a.localeCompare(b)); }
+
+  function computeDistribution(data, targetCol, filterCol, filterVal, dtStart, dtEnd){
+    const counts=new Map(); let matched=0;
+    for(const row of data){
+      // filter rentang waktu
+      if(dtStart || dtEnd){
+        const d=parseCreatedAt(row['created_at']);
+        if(!d) continue; // jika tidak ada tanggal, exclude saat rentang aktif
+        if(dtStart && d < dtStart) continue;
+        if(dtEnd){ const endDay=new Date(dtEnd.getFullYear(), dtEnd.getMonth(), dtEnd.getDate(), 23,59,59,999); if(d > endDay) continue; }
+      }
+      if(rowMatches(row,filterCol,filterVal)){
+        matched++; const parts=parseMultiValue(row[targetCol]);
+        if(parts.length){ for(const p of parts){ counts.set(p,(counts.get(p)||0)+1); } }
+        else { const v=(row[targetCol]??'').toString().trim()||'(kosong)'; counts.set(v,(counts.get(v)||0)+1); }
+      }
+    }
+    const arr=Array.from(counts.entries()).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+    return {arr,matched};
+  }
+
+  // ===== Elements & State =====
+  const el=id=>document.getElementById(id);
+  const btnConfig=el('btnConfig'); const btnRun=el('run'); const btnDownloadPng=el('downloadPng');
+  const summary=el('summary'); const legend=el('legend'); const statRows=el('statRows'); const statMatch=el('statMatch'); const statUnique=el('statUnique');
+  const chartCanvas=el('chart'); const ctx=chartCanvas.getContext('2d');
+  const cfgBackdrop=el('cfgBackdrop'); const cfgApply=el('cfgApply'); const cfgCancel=el('cfgCancel');
+  const selTarget=el('targetCol'); const selFilterCol=el('filterCol'); const selFilterVal=el('filterVal'); const inpFilterVal=el('filterValInput'); const selChartType=el('chartType');
+  const dateStart=el('dateStart'); const dateEnd=el('dateEnd');
+
+  let header=[], data=[]; let lastResult=[]; let minDate=null, maxDate=null;
+  const TARGET_ALLOW=['kind','relevan','sentimen','emosi','intensi','aspek'];
+  const FILTER_ALLOW=['__ALL__','kind','text','parent_tweet_text','relevan','sentimen','emosi','intensi','aspek'];
+
+  // ===== Autoload CSV dari data/all.csv =====
+  async function loadDefaultCSV(){
+    try{
+      const res = await fetch('data/all.csv', {cache:'no-store'});
+      if(!res.ok) throw new Error(`Gagal memuat data/all.csv (status ${res.status})`);
+      const text = await res.text();
+      const rows = parseCSV(text);
+      const obj = rowsToObjects(rows);
+      header = obj.header; data = obj.data;
+
+      // header select
+      const headerSet=new Set(header);
+      const targetOpts=TARGET_ALLOW.filter(c=>headerSet.has(c));
+      const filterOpts=FILTER_ALLOW.filter(c=>c==='__ALL__'||headerSet.has(c));
+      selTarget.innerHTML='<option value="" disabled selected>Pilih kolom</option>'+targetOpts.map(h=>`<option value="${h}">${h}</option>`).join('');
+      selFilterCol.innerHTML=filterOpts.map(h=>h==='__ALL__'?'<option value="__ALL__" selected>— Semua Data —</option>':`<option value="${h}">${h}</option>`).join('');
+      selFilterVal.innerHTML='<option value="" disabled selected>Pilih nilai</option>'; selFilterVal.style.display=''; selFilterVal.disabled=true; inpFilterVal.style.display='none'; inpFilterVal.value='';
+
+      statRows.textContent=data.length; statMatch.textContent='-'; statUnique.textContent='-';
+      drawChart([]);
+
+      // Inisialisasi rentang tanggal dari kolom created_at (jika ada)
+      if(headerSet.has('created_at')){
+        let minD=null, maxD=null; for(const r of data){ const d=parseCreatedAt(r.created_at); if(!d) continue; if(!minD||d<minD) minD=d; if(!maxD||d>maxD) maxD=d; }
+        minDate=minD; maxDate=maxD;
+        if(minDate && maxDate){ dateStart.min=toDateInputValue(minDate); dateEnd.min=toDateInputValue(minDate); dateStart.max=toDateInputValue(maxDate); dateEnd.max=toDateInputValue(maxDate); dateStart.value=''; dateEnd.value=''; }
+      } else {
+        dateStart.disabled=true; dateEnd.disabled=true;
+      }
+
+      toast(`Muat ${data.length} baris • ${header.length} kolom dari data/all.csv`,'ok');
+      document.dispatchEvent(new CustomEvent('dv:data-ready', {detail:{source:'data/all.csv', rows:data.length}}));
+    } catch(err){ console.error(err); toast(err.message||'Gagal memuat data/all.csv','warn'); }
+  }
+  document.addEventListener('DOMContentLoaded', loadDefaultCSV);
+
+  // ===== Interaksi UI =====
+  selFilterCol.addEventListener('change',()=>{
+    const col=selFilterCol.value;
+    if(col==='__ALL__'){
+      selFilterVal.innerHTML='<option value="" disabled selected>Pilih nilai</option>'; selFilterVal.disabled=true; selFilterVal.style.display=''; inpFilterVal.style.display='none'; inpFilterVal.value='';
+    } else if(col==='text'||col==='parent_tweet_text'){
+      selFilterVal.disabled=true; selFilterVal.style.display='none'; inpFilterVal.style.display=''; inpFilterVal.focus();
+    } else {
+      const vals=uniqueValues(data,col);
+      selFilterVal.innerHTML='<option value="" disabled selected>Pilih nilai</option>'+vals.map(v=>`<option>${escapeHtml(v)}</option>`).join(''); selFilterVal.disabled=false; selFilterVal.style.display=''; inpFilterVal.style.display='none'; inpFilterVal.value='';
+    }
+  });
+
+  // Modal open/close
+  btnConfig.addEventListener('click',()=>{ cfgBackdrop.style.display='grid'; cfgBackdrop.setAttribute('aria-hidden','false'); });
+  cfgCancel.addEventListener('click',()=> closeModal());
+  cfgBackdrop.addEventListener('click',e=>{ if(e.target===cfgBackdrop) closeModal(); });
+  function closeModal(){ cfgBackdrop.style.display='none'; cfgBackdrop.setAttribute('aria-hidden','true'); }
+  cfgApply.addEventListener('click',()=>{ const ok=runComputation(); if(ok) closeModal(); });
+  btnRun.addEventListener('click',()=>{ runComputation(); });
+
+  function getDateRange(){
+    const s=dateStart.value? new Date(dateStart.value+'T00:00:00') : null;
+    const e=dateEnd.value? new Date(dateEnd.value+'T00:00:00') : null; // akan dibuat end-of-day saat filter
+    if(s && e && s>e){ toast('Tanggal mulai melebihi tanggal selesai. Periksa kembali.','warn'); return null; }
+    return {s,e};
+  }
+
+  function runComputation(){
+    if(!data.length){ toast('Data belum dimuat. Pastikan data/all.csv tersedia.','warn'); return false; }
+    if(!selTarget.value){ toast('Pilih Kolom Distribusi di Konfigurasi','warn'); btnConfig.focus(); return false; }
+    let needValue=selFilterCol.value!=='__ALL__'; let filterVal;
+    if(needValue){ if(selFilterCol.value==='text'||selFilterCol.value==='parent_tweet_text'){ filterVal=inpFilterVal.value.trim(); if(!filterVal){ toast('Isi kata yang ingin dicari pada kolom teks.','warn'); return false; } } else { filterVal=selFilterVal.value; if(!filterVal){ toast('Pilih Nilai pada Kondisi atau set "Semua Data"','warn'); btnConfig.focus(); return false; } } }
+
+    const range=getDateRange(); if(range===null) return false; const {s:eStart,e:eEnd}=range||{}; // rename agar jelas di compute
+
+    const {arr,matched}=computeDistribution(data, selTarget.value, selFilterCol.value||'__ALL__', filterVal, eStart, eEnd);
+    lastResult=arr; statMatch.textContent = (()=>{ // jumlah baris cocok dengan semua filter (termasuk tanggal)
+      if(selFilterCol.value==='__ALL__'){
+        // hitung total data yang lolos rentang jika rentang aktif
+        if(eStart||eEnd){ let c=0; for(const r of data){ const d=parseCreatedAt(r.created_at); if(!d) continue; if(eStart && d<eStart) continue; if(eEnd){ const eo=new Date(eEnd.getFullYear(), eEnd.getMonth(), eEnd.getDate(), 23,59,59,999); if(d>eo) continue; } c++; } return c; }
+        return data.length;
+      }
+      return matched;
+    })();
+    statUnique.textContent=arr.length;
+
+    // Summary badges
+    summary.innerHTML='';
+    summary.append(badge('Distribusi',selTarget.value));
+    const condText=selFilterCol.value==='__ALL__'?'Semua Data':(selFilterCol.value==='text'||selFilterCol.value==='parent_tweet_text'?`${selFilterCol.value} ~ mengandung "${filterVal}"`:`${selFilterCol.value} = ${filterVal}`);
+    summary.append(badge('Kondisi',condText));
+    // Rentang waktu
+    if(eStart||eEnd){
+      const toStr=d=>toDateInputValue(d);
+      const rangeStr=`${eStart?toStr(eStart):'awal'} → ${eEnd?toStr(eEnd):'akhir'}`;
+      summary.append(badge('Rentang', rangeStr));
+    } else {
+      summary.append(badge('Rentang','seluruh data'));
+    }
+    summary.append(badge('Grafik', selChartType.value.toUpperCase()));
+
+    drawChart(arr, selChartType.value);
+    return true;
+  }
+
+  // Download PNG
+  btnDownloadPng.addEventListener('click',()=>{
+    if(!lastResult.length){ toast('Belum ada grafik untuk diunduh','warn'); return; }
+    const name=`chart-${selChartType.value}.png`;
+    if(chartCanvas.toBlob){ chartCanvas.toBlob((blob)=>{ if(!blob){ fallbackToDataURL(name); return; } const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); },0); },'image/png'); } else { fallbackToDataURL(name); }
+  });
+  function fallbackToDataURL(name){ try{ const url=chartCanvas.toDataURL('image/png'); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>a.remove(),0); } catch(e){ console.error(e); toast('Gagal menyiapkan PNG. Coba ulang setelah menggambar grafik.','warn'); } }
+
+  // Charting
+  function drawChart(entries,type='bar'){ legend.innerHTML=''; if(type==='pie') drawPie(entries); else drawBar(entries); }
+  function drawBar(entries){ const W=chartCanvas.width,H=chartCanvas.height; ctx.clearRect(0,0,W,H); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H); const RIGHT_LABEL_MARGIN=80; const padL=160,padR=RIGHT_LABEL_MARGIN+12,padT=20,padB=30; const innerW=W-padL-padR, innerH=H-padT-padB; const n=entries.length; if(!n){ emptyMsg(padL,padT); return; } const maxVal=Math.max(...entries.map(e=>e[1])); const barGap=10; const barH=Math.max(6, Math.min(28, (innerH-barGap*(n-1))/n)); ctx.textBaseline='middle'; ctx.font='12px system-ui'; entries.forEach(([label,value],idx)=>{ const y=padT+idx*(barH+barGap); const w=maxVal?(value/maxVal)*innerW:0; ctx.fillStyle='#0f172a'; const lbl=String(label).length>36?String(label).slice(0,33)+'…':String(label); ctx.fillText(lbl,8,y+barH/2); ctx.fillStyle='#93c5fd'; roundRect(ctx,padL,y,w,barH,8,true,false); const valStr=String(value); ctx.font='11px system-ui'; const tw=ctx.measureText(valStr).width; let tx=padL+w+6; const maxX=W-RIGHT_LABEL_MARGIN+6; if(tx+tw>maxX) tx=Math.max(padL+w-tw-6, padL+6); ctx.fillStyle='#0f172a'; ctx.fillText(valStr, tx, y+barH/2); }); ctx.strokeStyle='#e2e8f0'; ctx.beginPath(); ctx.moveTo(padL,padT); ctx.lineTo(padL,H-padB); ctx.stroke(); }
+  function drawPie(entries){ const W=chartCanvas.width,H=chartCanvas.height; ctx.clearRect(0,0,W,H); ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H); if(!entries.length){ emptyMsg(20,30); return; } const total=entries.reduce((s,[,n])=>s+n,0)||1; const radius=Math.min(W,H)*0.35; const cx=W*0.45, cy=H*0.52; const palette=['#93c5fd','#86efac','#fca5a5','#fcd34d','#c4b5fd','#a5f3fc','#f9a8d4','#fda4af','#fdba74','#99f6e4','#d8b4fe','#fecaca','#fde68a','#bfdbfe','#bbf7d0','#fecdd3','#fee2e2','#ddd6fe','#fde047','#bae6fd']; let start=-Math.PI/2; entries.forEach(([label,value],idx)=>{ const frac=value/total; const sweep=frac*Math.PI*2; const end=start+sweep; ctx.beginPath(); ctx.moveTo(cx,cy); ctx.arc(cx,cy,radius,start,end); ctx.closePath(); ctx.fillStyle=palette[idx%palette.length]; ctx.fill(); start=end; }); legend.innerHTML=''; entries.forEach(([label,value],idx)=>{ const pct=((value*100)/total).toFixed(1)+'%'; const item=document.createElement('div'); item.className='legend-item'; item.innerHTML=`<span class="swatch" style="background:${palette[idx%palette.length]}"></span><span>${escapeHtml(label)} <span class="muted">(${pct})</span></span>`; legend.appendChild(item); }); }
+  function emptyMsg(x,y){ ctx.fillStyle='#64748b'; ctx.font='14px system-ui'; ctx.fillText('Belum ada data. Konfigurasi & jalankan untuk melihat grafik.', x, y+20); }
+  function roundRect(ctx,x,y,w,h,r,fill,stroke){ if(w<0){ x+=w; w=Math.abs(w);} if(h<0){ y+=h; h=Math.abs(h);} if(r>w/2) r=w/2; if(r>h/2) r=h/2; ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); if(fill) ctx.fill(); if(stroke) ctx.stroke(); }
+
+  // Helpers
+  function badge(label,value){ const d=document.createElement('div'); d.className='badge'; d.textContent=`${label}: ${value}`; return d; }
+  function toast(msg,type){ const div=document.createElement('div'); div.textContent=msg; Object.assign(div.style,{position:'fixed',bottom:'16px',right:'16px',padding:'10px 14px',borderRadius:'12px',border:'1px solid var(--border)',background:'#fff',boxShadow:'0 1px 2px rgba(15,23,42,.12)',zIndex:9999}); div.style.color = type==='ok'? '#16a34a' : (type==='warn'? '#ea580c' : 'var(--ink)'); document.body.appendChild(div); setTimeout(()=>div.remove(),2200); }
+  function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

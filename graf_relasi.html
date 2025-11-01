@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graf Relasi Akun — Tag (@mention) | Autoload data/all.csv + Focus Subgraf</title>
+  <style>
+    :root{
+      --bg:#ffffff; --ink:#0f172a; --muted:#475569; --border:#e2e8f0; --accent:#2563eb; --accent-ink:#ffffff;
+      --chip:#f8fafc; --chip-ink:#0f172a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell}
+    header{display:flex;align-items:center;gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); position:sticky;top:0;background:var(--bg);z-index:10}
+    header h1{font-size:16px;margin:0}
+    .badge{background:var(--chip);color:var(--chip-ink);padding:4px 8px;border-radius:999px;border:1px solid var(--border)}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-left:auto}
+    .group{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);padding:8px;border-radius:12px}
+    label{font-weight:600;color:var(--muted)}
+    input[type="text"]{padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:220px}
+    input[type="range"]{accent-color:var(--accent)}
+    button{padding:8px 12px;border:1px solid var(--border);background:#fff;border-radius:10px;cursor:pointer}
+    button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+    #status{padding:8px 16px;color:var(--muted)}
+    #cy{width:100%; height: calc(100vh - 140px);}  
+    .legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:8px 16px;color:var(--muted);border-top:1px solid var(--border)}
+    .pill{border:1px solid var(--border);background:var(--chip);color:var(--chip-ink);padding:4px 8px;border-radius:999px}
+  </style>
+  <!-- Dependensi fCoSE (urutan benar untuk GitHub Pages) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/layout-base@2.0.1/layout-base.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cose-base@2.2.0/cose-base.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-fcose@2.2.0/cytoscape-fcose.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Graf Relasi Akun — Tag (@mention)</h1>
+    <span class="badge">Sumber: <code>data/all.csv</code></span>
+    <div class="toolbar">
+      <div class="group">
+        <label for="search">Fokus akun</label>
+        <input id="search" type="text" placeholder="contoh: tvri atau @tvri" />
+        <button id="btnFocus" class="primary">Tampilkan Subgraf</button>
+        <button id="btnReset">Tampilkan Semua</button>
+      </div>
+      <div class="group">
+        <label for="minWeight">Min interaksi</label>
+        <input id="minWeight" type="range" min="1" max="10" step="1" value="1" />
+        <span id="minWeightVal" class="pill">≥ 1</span>
+      </div>
+      <div class="group">
+        <button id="btnFit">Fit</button>
+        <button id="btnPng">Unduh PNG</button>
+        <button id="btnReload">Muat ulang</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="status">Memuat <code>data/all.csv</code>… Kolom minimal: <code>user_screen_name</code> dan salah satu: <code>text</code> | <code>full_text</code> | <code>tweet_text</code>. Gunakan "Fokus akun" untuk menampilkan hanya node yang berhubungan (masuk/keluar) dengan akun itu.</div>
+  <div id="cy"></div>
+  <div class="legend">
+    <span class="pill">Node = <strong>akun</strong> (user_screen_name atau <code>@mention</code>)</span>
+    <span class="pill">Edge berarah <strong>penulis → akun yang ditag</strong></span>
+    <span class="pill">"Fokus akun" membangun <strong>subgraf 1-hop</strong></span>
+  </div>
+
+  <script>
+  // Registrasi plugin (defensif)
+  try{ if(window.cytoscapeFcose){ cytoscape.use(window.cytoscapeFcose); } }catch(_){}
+
+  // ======= UTIL =======
+  const setStatus = (msg) => { document.getElementById('status').textContent = msg }
+  const norm = (s) => (s||'').toString().trim();
+
+  // Mention regex yang menghindari email (harus non-alfanum sebelum @)
+  function extractMentions(text){
+    const out = new Set();
+    const re = /(^|[^A-Za-z0-9_@])@([A-Za-z0-9_]{1,15})\b/g;
+    let m; const t = text || '';
+    while((m = re.exec(t)) !== null){ out.add(m[2]); }
+    return Array.from(out);
+  }
+
+  let cy;                // cytoscape instance
+  let allElements = [];  // elemen penuh (nodes + edges)
+
+  async function loadCSV(path='data/all.csv'){
+    setStatus(`Memuat ${path} …`);
+    const res = await fetch(path, { cache: 'no-store' });
+    if(!res.ok){
+      setStatus(`Gagal memuat ${path}: ${res.status} ${res.statusText}. Pastikan folder \"data\" sejajar & domain sama (GitHub Pages).`);
+      return null;
+    }
+    const text = await res.text();
+    return new Promise((resolve)=>{
+      Papa.parse(text, { header:true, skipEmptyLines:true, dynamicTyping:false, complete: (out)=> resolve(out.data) });
+    });
+  }
+
+  function buildGraph(rows){
+    const nodesSet = new Set();
+    const edgesMap = new Map(); // key: src→dst => weight
+
+    for(const r of rows){
+      const author = norm(r.user_screen_name) || norm(r.user_name) || '';
+      const text = r.text || r.full_text || r.tweet_text || '';
+      if(!author && !text) continue;
+
+      const mentions = extractMentions(text);
+      if(author) nodesSet.add(author);
+
+      for(const m of mentions){
+        const target = '@' + m; // tampilan @handle
+        nodesSet.add(target);
+        if(!author) continue; // tidak ada sumber
+        if(author.toLowerCase() === target.toLowerCase()) continue; // hindari self-mention
+        const key = `${author}→${target}`;
+        edgesMap.set(key, (edgesMap.get(key)||0) + 1);
+      }
+    }
+
+    const nodes = Array.from(nodesSet).map(u => ({ data:{ id:u, label:u } }));
+    const edges = Array.from(edgesMap.entries()).map(([key,w])=>{
+      const [src,dst] = key.split('→');
+      return { data:{ id:`${src}__${dst}`, source:src, target:dst, weight:w } };
+    });
+
+    allElements = [...nodes, ...edges];
+  }
+
+  function renderGraph(elems = allElements){
+    if(cy){ cy.destroy(); cy=null }
+
+    // pilih layout yang tersedia
+    let layoutName = 'fcose';
+    if(!(cytoscape.prototype.fcose || (window.cytoscapeFcose))){ layoutName = 'cose'; }
+
+    cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: elems,
+      layout: layoutName === 'fcose' ? { name:'fcose', animate:false, randomize:true, nodeSeparation:80 } : { name:'cose', animate:false, nodeRepulsion: 2048 },
+      wheelSensitivity: 0.2,
+      style: [
+        { selector:'node', style:{
+            'background-color':'#a7f3d0',
+            'label':'data(label)',
+            'font-size': 10,
+            'text-valign':'center',
+            'text-halign':'center',
+            'text-wrap':'wrap', 'text-max-width': 120,
+            'color':'#0f172a',
+            'border-color':'#10b981', 'border-width':1,
+            'width': 'mapData(degree, 0, 40, 10, 44)',
+            'height':'mapData(degree, 0, 40, 10, 44)'
+        }},
+        { selector:'edge', style:{
+            'width': 'mapData(weight, 1, 10, 1, 8)',
+            'line-color':'#64748b',
+            'curve-style':'bezier',
+            'target-arrow-shape':'triangle',
+            'target-arrow-color':'#64748b',
+            'arrow-scale':1.2,
+            'opacity':0.85
+        }}
+      ]
+    });
+
+    cy.ready(() => setStatus(`Graf siap — ${cy.nodes().length} akun, ${cy.edges().length} relasi.`));
+
+    // Klik node → fokus subgraf (1-hop) dari node tsb
+    cy.on('tap', 'node', (evt)=> focusSubgraphByNode(evt.target));
+  }
+
+  // ======= SUBGRAF FOKUS =======
+  function findNodeByQuery(q){
+    if(!cy) return null;
+    const qq = q.toLowerCase();
+    // dukung input "tvri" atau "@tvri"
+    const candidates = cy.nodes().filter(n=>{
+      const id = (n.id()||'').toLowerCase();
+      const label = (n.data('label')||'').toLowerCase();
+      return id === qq || id === '@'+qq || label === qq || label === '@'+qq || id.includes(qq) || label.includes(qq);
+    });
+    return candidates[0] || null;
+  }
+
+  function focusSubgraphByNode(node){
+    if(!node) return;
+    const nb = node.closedNeighborhood(); // node + edges + neighbors (1-hop)
+    const subElems = nb.union(node);
+    // rebuild elemen (agar yang lain beneran hilang, bukan display:none)
+    const elems = subElems.jsons();
+    renderGraph(elems);
+    setStatus(`Subgraf untuk: ${node.data('label')} — akun: ${cy.nodes().length}, relasi: ${cy.edges().length}`);
+  }
+
+  function focusSubgraphByQuery(q){
+    const node = findNodeByQuery(q);
+    if(node){ focusSubgraphByNode(node); }
+    else{ setStatus(`Akun "${q}" tidak ditemukan pada graf.`); }
+  }
+
+  function resetGraph(){
+    renderGraph(allElements);
+    applyMinWeightFilter(parseInt(document.getElementById('minWeight').value,10));
+  }
+
+  function applyMinWeightFilter(minW){
+    if(!cy) return;
+    // Untuk graf yang sudah dirender (bisa subgraf), sembunyikan yang di bawah threshold
+    cy.edges().style('display','element');
+    cy.edges().forEach(e=>{ if((e.data('weight')||0) < minW) e.style('display','none'); });
+    cy.nodes().forEach(n=>{
+      const visibleDeg = n.connectedEdges().filter(e=>e.style('display') !== 'none').length;
+      n.style('display', visibleDeg>0 ? 'element' : 'none');
+    });
+    setStatus(`Filter (≥ ${minW}) — ${cy.nodes(':visible').length} akun, ${cy.edges(':visible').length} relasi.`)
+  }
+
+  // ======= INIT (AUTOLOAD) =======
+  async function init(){
+    try{
+      const rows = await loadCSV('data/all.csv');
+      if(!rows){ return }
+      const hasUser = rows.some(r => 'user_screen_name' in r || 'user_name' in r);
+      const hasText = rows.some(r => 'text' in r || 'full_text' in r || 'tweet_text' in r);
+      if(!hasUser || !hasText){
+        setStatus('Kolom wajib tidak lengkap. Minimal: user_screen_name (atau user_name), dan salah satu: text | full_text | tweet_text');
+        return;
+      }
+      buildGraph(rows);
+      renderGraph();
+      applyMinWeightFilter(parseInt(document.getElementById('minWeight').value,10));
+    }catch(e){
+      console.error(e);
+      setStatus('Terjadi kesalahan saat memuat atau memproses data. Lihat konsol.');
+    }
+  }
+
+  document.getElementById('btnFocus').addEventListener('click', ()=>{
+    const q = norm(document.getElementById('search').value);
+    if(!q){ setStatus('Masukkan nama akun untuk fokus, contoh: tvri atau @tvri'); return; }
+    focusSubgraphByQuery(q);
+  });
+  document.getElementById('btnReset').addEventListener('click', resetGraph);
+  document.getElementById('btnFit').addEventListener('click', ()=> cy && cy.fit(cy.elements(), 60));
+  document.getElementById('btnPng').addEventListener('click', ()=>{
+    if(!cy) return;
+    const png = cy.png({ full:true, maxWidth:4096, maxHeight:4096, scale:2 });
+    const a = document.createElement('a'); a.href = png; a.download = 'graf-relasi-mention-autoload.png'; a.click();
+  });
+  document.getElementById('btnReload').addEventListener('click', init);
+
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Distribusi Nilai per Waktu</title>
+
+  <!-- === (1) CSS & asset halaman service asli === -->
+  <style>
+    :root{
+      --bg:#f8fafc; /* slate-50 */
+      --card:#ffffff;
+      --ink:#0f172a; /* slate-900 */
+      --muted:#64748b; /* slate-500 */
+      --accent:#2563eb; /* blue-600 */
+      --border:#e2e8f0; /* slate-200 */
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial}
+    header{padding:24px 16px;text-align:center}
+    h1{margin:0 0 6px;font-size:22px}
+    p.sub{margin:0;color:var(--muted);font-size:14px}
+    .wrap{max-width:1100px;margin:0 auto;padding:0 16px 24px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 2px 10px rgba(2,6,23,.04);padding:16px}
+    .grid{display:grid;gap:10px;grid-template-columns:1fr}
+    .row{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .row label{font-weight:600}
+    select, button{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink)}
+    button{cursor:pointer}
+    .hint{color:var(--muted);font-size:12px}
+    canvas{margin-top:14px;width:100% !important;max-height:460px}
+    .actions{display:flex;justify-content:flex-end;margin-top:10px}
+    .filters{margin-top:12px;border-top:1px dashed var(--border);padding-top:12px}
+    .filters .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;max-height:150px;overflow:auto}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:6px 10px;background:#fff}
+    .chip input{margin:0}
+    .bad{color:#b91c1c}
+    .good{color:#166534}
+  </style>
+
+  <!-- === (2) CSS App Shell (diletakkan SETELAH CSS service agar minim bentrok) === -->
+  <style>
+    :root{
+      --sb-bg:#ffffff; --sb-border:#e2e8f0; --sb-ink:#0f172a; --sb-muted:#64748b;
+      --sb-accent:#2563eb; --sb-accent-ink:#ffffff; --sb-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+    /* ===== App Shell ===== */
+    .app-shell{display:grid;grid-template-columns:280px 1fr;min-height:100dvh;background:#f8fafc;color:var(--sb-ink)}
+    .app-shell.collapsed{grid-template-columns:100px 1fr}
+    .app-sidebar{position:sticky;top:0;height:100dvh;padding:12px}
+    .sb-card{height:100%;background:var(--sb-bg);border:1px solid var(--sb-border);border-radius:16px;box-shadow:var(--sb-shadow);display:flex;flex-direction:column}
+    .sb-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--sb-border)}
+    .sb-brand{display:flex;align-items:center;gap:10px}
+    .sb-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+    .sb-title{font-weight:800}
+    .sb-toggle{cursor:pointer;border:1px solid var(--sb-border);background:#fff;border-radius:10px;padding:8px}
+    .sb-nav{padding:12px;display:grid;gap:8px;overflow:auto}
+    .sb-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--sb-border);border-radius:12px;background:#fff;color:var(--sb-ink);text-decoration:none;font-weight:600}
+    .sb-link:hover{border-color:#cbd5e1}
+    .sb-link.active{background:var(--sb-accent);border-color:transparent;color:var(--sb-accent-ink)}
+    .sb-ico{width:22px;height:22px;display:inline-grid;place-items:center}
+    .sb-ico svg{width:20px;height:20px}
+    .sb-label{white-space:nowrap}
+    .sb-help{margin-top:auto;padding:12px;border-top:1px dashed var(--sb-border);font-size:13px;color:var(--sb-muted)}
+    /* Collapsed: sembunyikan label, center ikon */
+    .app-shell.collapsed .sb-title,.app-shell.collapsed .sb-label,.app-shell.collapsed .sb-help{display:none}
+    .app-shell.collapsed .sb-head{justify-content:center}
+    .app-main{padding:20px}
+    /* Optional: konten kartu di halaman */
+    .app-card{background:#fff;border:1px solid var(--sb-border);border-radius:16px;box-shadow:var(--sb-shadow);padding:16px}
+  </style>
+
+  <!-- Library dari service -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+  <div id="APP" class="app-shell">
+    <!-- ===== SIDEBAR ===== -->
+    <aside class="app-sidebar" aria-label="Navigasi Layanan">
+      <div class="sb-card">
+        <div class="sb-head">
+          <div class="sb-brand">
+            <div class="sb-title">TVRI on <span class="x">𝕏</span></div>
+          </div>
+          <button id="sbToggle" class="sb-toggle" title="Sembunyikan/Expand sidebar" aria-expanded="true">⟨⟩</button>
+        </div>
+        <nav class="sb-nav">
+          <a class="sb-link" href="index.html" title="Data Viewer"><span class="sb-ico">{#icon-doc#}</span><span class="sb-label">Data Viewer</span></a>
+          <a class="sb-link" href="distribusi_nilai.html" title="Distribusi Nilai"><span class="sb-ico">{#icon-chart#}</span><span class="sb-label">Distribusi Nilai</span></a>
+          <a class="sb-link" href="persilangan_nilai.html" title="Persilangan Nilai"><span class="sb-ico">{#icon-grid#}</span><span class="sb-label">Persilangan Nilai</span></a>
+          <a class="sb-link" href="timeline_distribusi.html" title="Analisis Timeline"><span class="sb-ico">{#icon-trend#}</span><span class="sb-label">Analisis Timeline</span></a>
+          <a class="sb-link" href="analisis_interaksi.html" title="Analisis Interaksi"><span class="sb-ico">{#icon-network#}</span><span class="sb-label">Analisis Interaksi</span></a>
+        </nav>
+      </div>
+    </aside>
+
+    <!-- ===== KONTEN HALAMAN (SERVICE) ===== -->
+    <main class="app-main">
+      <!-- === Seluruh DOM service dipindah ke sini === -->
+      <div class="app-card">
+        <header>
+          <h1>Distribusi Nilai per Waktu</h1>
+          <p class="sub">Sumber data otomatis: <code>data/all.csv</code> (relative terhadap file ini).</p>
+        </header>
+
+        <div class="wrap">
+          <div class="card">
+            <div class="grid">
+              <!-- HAPUS input file: sekarang muat otomatis dari data/all.csv -->
+              <div class="row">
+                <label for="timeCol">Kolom Waktu</label>
+                <select id="timeCol"></select>
+
+                <label for="catCol">Kolom Kategori</label>
+                <select id="catCol"></select>
+
+                <label for="interval">Interval</label>
+                <select id="interval">
+                  <option value="day">Per Hari</option>
+                  <option value="week" selected>Per Minggu</option>
+                  <option value="month">Per Bulan</option>
+                </select>
+              </div>
+
+              <canvas id="chart"></canvas>
+              <div class="actions">
+                <button id="btnDownload" title="Unduh grafik sebagai PNG">Unduh Grafik (PNG)</button>
+              </div>
+              
+              <!-- FILTER KATEGORI -->
+              <div class="filters">
+                <div class="toolbar">
+                  <strong>Filter kategori:</strong>
+                  <label class="row" style="gap:6px">
+                    <input type="checkbox" id="toggleAll" checked /> Tampilkan semua
+                  </label>
+                  <button id="btnSelectAll" type="button">Pilih Semua</button>
+                  <button id="btnClearAll" type="button">Kosongkan</button>
+                </div>
+                <div id="chips" class="chips"></div>
+              </div>
+
+              <div id="msg" class="hint"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- === Ikon SVG + Script App Shell === -->
+  <script>
+    /* ====== Ikon SVG (inline, agar tampil saat collapse) ====== */
+    const ICONS = {
+      chart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7" rx="1"/><rect x="12" y="6" width="3" height="11" rx="1"/><rect x="17" y="12" width="3" height="5" rx="1"/></svg>`,
+      grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>`,
+      trend:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M21 21H3"/></svg>`,
+      cloud:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.3-1.8A4 4 0 0 0 7 19h10.5z"/></svg>`,
+      doc:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6M8 9h3"/></svg>`,
+      cog:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06c.47.47.61 1.17.33 1.78.24.52.73.86 1.29.86H21a2 2 0 1 1 0 4h-.09c-.66 0-1.25.39-1.51 1z"/></svg>`,
+      network: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="2"/> <circle cx="4"  cy="12" r="2"/> <circle cx="12" cy="4"  r="2"/> <circle cx="20" cy="12" r="2"/> <circle cx="12" cy="20" r="2"/> <line x1="6"  y1="12" x2="10" y2="12"/> <line x1="12" y1="6"  x2="12" y2="10"/> <line x1="14" y1="12" x2="18" y2="12"/> <line x1="12" y1="14" x2="12" y2="18"/> </svg>`,    
+    };
+
+    // Ganti placeholder {#icon-...#} dengan SVG
+    document.querySelectorAll('.sb-ico').forEach(el=>{
+      const html = el.innerHTML;
+      const key = /\{#icon-([a-z]+)#\}/.exec(html);
+      if(key && ICONS[key[1]]) el.innerHTML = ICONS[key[1]]; else el.innerHTML = ICONS.chart;
+    });
+
+    // Collapse toggle + persistence
+    const APP = document.getElementById('APP');
+    const SB_TOGGLE = document.getElementById('sbToggle');
+    function applySBState(){
+      const collapsed = localStorage.getItem('sb-collapsed') === '1';
+      APP.classList.toggle('collapsed', collapsed);
+      SB_TOGGLE.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+    SB_TOGGLE.addEventListener('click',()=>{
+      const next = !(localStorage.getItem('sb-collapsed') === '1');
+      localStorage.setItem('sb-collapsed', next ? '1' : '0');
+      applySBState();
+    });
+    applySBState();
+
+    // Auto-aktifkan link berdasarkan URL (fallback jika class="active" tidak diset manual)
+    (function autoActive(){
+      const path = location.pathname.split('/').pop();
+      document.querySelectorAll('.sb-link').forEach(a=>{
+        const href = a.getAttribute('href');
+        if(!href) return;
+        const fname = href.split('/').pop();
+        if(fname && fname === path){ a.classList.add('active'); }
+      });
+    })();
+  </script>
+
+  <!-- === Script halaman service === -->
+  <script>
+    const el = (id)=>document.getElementById(id);
+    const timeCol = el('timeCol');
+    const catCol = el('catCol');
+    const intervalSel = el('interval');
+    const btnDownload = el('btnDownload');
+    const toggleAll = el('toggleAll');
+    const btnSelectAll = el('btnSelectAll');
+    const btnClearAll = el('btnClearAll');
+    const chips = el('chips');
+    const msg = el('msg');
+    const chartCanvas = el('chart');
+    const ctx = chartCanvas.getContext('2d');
+
+    let rows = [];
+    let chart;
+    let currentCatList = [];
+    let visibleSet = new Set(); // categories to show
+
+    // --- Helpers ---
+    function looksLikeDateHeader(name){
+      return /(created_at|time|tanggal|date|created|posted|waktu)/i.test(name);
+    }
+
+    function parseDateLoose(v){
+      if (v == null) return null;
+      if (/^\d{10,13}$/.test(String(v).trim())){
+        const n = Number(v);
+        const ms = (String(v).length === 10) ? n*1000 : n;
+        const d = new Date(ms);
+        return isNaN(d) ? null : d;
+      }
+      const d = new Date(v);
+      return isNaN(d) ? null : d;
+    }
+
+    function isoWeekNumberUTC(date){
+      const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+      d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+      const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+      const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+      return {week: weekNo, year: d.getUTCFullYear()};
+    }
+
+    function bucketKey(d, interval){
+      if (interval==='day') {
+        const lab = d.toISOString().slice(0,10);
+        return { key: lab, label: lab };
+      }
+      if (interval==='week') {
+        const {week, year} = isoWeekNumberUTC(d);
+        return { key: `${year}-W${String(week).padStart(2,'0')}`, label: `Week ${week}` };
+      }
+      if (interval==='month') {
+        const y = d.getUTCFullYear();
+        const m = d.getUTCMonth();
+        const key = `${y}-${String(m+1).padStart(2,'0')}`;
+        const ref = new Date(Date.UTC(y,m,1));
+        const label = ref.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+        return { key, label };
+      }
+      const iso = d.toISOString();
+      return { key: iso, label: iso };
+    }
+
+    function parseMultiValues(v){
+      if (v==null) return [];
+      if (Array.isArray(v)) return v.map(x=>String(x).trim()).filter(Boolean);
+      let s = String(v).trim();
+      if (!s) return [];
+      if ((s.startsWith('[') && s.endsWith(']')) || (s.startsWith('{') && s.endsWith('}'))){
+        try{ const parsed = JSON.parse(s); if (Array.isArray(parsed)) return parsed.map(x=>String(x).trim()).filter(Boolean); }catch{}
+      }
+      const parts = s.split(/[ ,;|\/]|\s*\|\s*/g).map(x=>x.trim()).filter(Boolean);
+      return parts.length ? parts : [s];
+    }
+
+    function niceColor(i){
+      const h = (i*57) % 360; return `hsl(${h} 65% 45%)`;
+    }
+
+    function updateSelectors(headers){
+      timeCol.innerHTML = '';
+      catCol.innerHTML = '';
+      headers.forEach(h=>{
+        const o1 = document.createElement('option'); o1.value = h; o1.textContent = h; timeCol.appendChild(o1);
+        const o2 = document.createElement('option'); o2.value = h; o2.textContent = h; catCol.appendChild(o2);
+      });
+      const timeGuess = headers.find(looksLikeDateHeader) || headers[0];
+      timeCol.value = timeGuess;
+      const catGuess = headers.find(h=>/(sentimen|sentiment|emosi|emotion|label|kategori|aspect|aspek)/i.test(h)) || headers[0];
+      catCol.value = catGuess;
+    }
+
+    function computeSeries(){
+      const tCol = timeCol.value; const cCol = catCol.value; const interval = intervalSel.value;
+      if (!tCol || !cCol){ msg.innerHTML = '<span class="bad">Pilih kolom waktu dan kolom kategori.</span>'; return null; }
+
+      const buckets = new Map(); // key -> {label, counts: Map(cat->n)}
+      const allCats = new Set();
+
+      for (const r of rows){
+        const d = parseDateLoose(r[tCol]);
+        if (!d) continue;
+        const {key, label} = bucketKey(d, interval);
+
+        const cats = parseMultiValues(r[cCol]);
+        if (cats.length === 0){ cats.push('(kosong)'); }
+
+        if (!buckets.has(key)) buckets.set(key, { label, counts: new Map() });
+        const b = buckets.get(key);
+        for (const cat of cats){
+          allCats.add(cat);
+          b.counts.set(cat, (b.counts.get(cat) || 0) + 1);
+        }
+      }
+
+      const sortedKeys = Array.from(buckets.keys()).sort((a,b)=> a.localeCompare(b));
+      const labels = sortedKeys.map(k => buckets.get(k).label);
+
+      const catList = Array.from(allCats).sort();
+      const datasets = catList.map((cat, i)=>{
+        const data = sortedKeys.map(k=> (buckets.get(k).counts.get(cat) || 0));
+        return { label: cat, data, tension: 0.2, borderColor: niceColor(i), backgroundColor: 'transparent', pointRadius: 2, spanGaps: true };
+      });
+
+      return { labels, datasets, catList };
+    }
+
+    function buildFilterChips(catList){
+      currentCatList = catList.slice();
+      chips.innerHTML = '';
+      visibleSet = new Set(catList); // default visible semua
+      toggleAll.checked = true;
+      for (const cat of catList){
+        const id = `cat-${btoa(unescape(encodeURIComponent(cat))).replace(/=/g,'')}`;
+        const wrap = document.createElement('label');
+        wrap.className = 'chip';
+        wrap.innerHTML = `<input type="checkbox" id="${id}" data-cat="${cat}" checked> <span>${cat}</span>`;
+        chips.appendChild(wrap);
+      }
+      chips.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const c = cb.getAttribute('data-cat');
+          if (cb.checked) visibleSet.add(c); else visibleSet.delete(c);
+          toggleAll.checked = visibleSet.size === currentCatList.length;
+          applyVisibility();
+        });
+      });
+    }
+
+    function applyVisibility(){
+      if (!chart) return;
+      const showAll = toggleAll.checked;
+      chart.data.datasets.forEach(ds=>{
+        const label = ds.label;
+        ds.hidden = showAll ? false : !visibleSet.has(label);
+      });
+      chart.update();
+    }
+
+    function render(){
+      const res = computeSeries();
+      if (!res){ return; }
+      const {labels, datasets, catList} = res;
+      msg.innerHTML = datasets.length
+        ? `<span class="good">Menampilkan ${datasets.length} kategori pada ${labels.length} bucket waktu.</span>`
+        : 'Tidak ada data terhitung.';
+
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+          responsive: true,
+          interaction: { mode: 'nearest', intersect: false },
+          plugins: {
+            legend: { position: 'bottom' },
+            tooltip: { callbacks: { title: items => items[0]?.label || '' } }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Waktu' } },
+            y: { beginAtZero: true, title: { display: true, text: 'Jumlah' } }
+          }
+        }
+      });
+
+      buildFilterChips(catList);
+      applyVisibility();
+    }
+
+    // === Muat data/all.csv secara otomatis (siap GitHub Pages) ===
+    function loadDefaultCSV(){
+      const url = `data/all.csv?v=${Date.now()}`; // cache-buster ringan agar update cepat di Pages
+      Papa.parse(url, {
+        download: true,
+        header: true,
+        dynamicTyping: true,
+        skipEmptyLines: true,
+        complete: ({data, meta})=>{
+          rows = (data || []).filter(obj=> obj && Object.keys(obj).some(k=> String(obj[k] ?? '').trim()!==''));
+          if (!rows.length){ msg.innerHTML = '<span class="bad">CSV kosong atau tidak terbaca.</span>'; return; }
+          const headers = (meta && meta.fields && meta.fields.length) ? meta.fields : Object.keys(rows[0]);
+          updateSelectors(headers);
+          render();
+        },
+        error: (err)=>{
+          msg.innerHTML = `<span class="bad">Gagal membaca <code>data/all.csv</code>: ${err}. Pastikan file berada di folder <code>data/</code> dan di-commit ke branch GitHub Pages.</span>`;
+        }
+      });
+    }
+
+    // --- Events ---
+    timeCol.addEventListener('change', render);
+    catCol.addEventListener('change', render);
+    intervalSel.addEventListener('change', render);
+
+    // Download chart
+    btnDownload.addEventListener('click', ()=>{
+      if (!chart){ return; }
+      const link = document.createElement('a');
+      link.download = `chart-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+      link.href = chartCanvas.toDataURL('image/png', 1.0);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    });
+
+    // Filter toolbar actions
+    toggleAll.addEventListener('change', ()=>{
+      if (toggleAll.checked){
+        // show all
+        visibleSet = new Set(currentCatList);
+        chips.querySelectorAll('input[type=checkbox]').forEach(cb=> cb.checked = true);
+      } else {
+        // keep current selections; if none selected, keep it none
+      }
+      applyVisibility();
+    });
+
+    btnSelectAll.addEventListener('click', ()=>{
+      visibleSet = new Set(currentCatList);
+      chips.querySelectorAll('input[type=checkbox]').forEach(cb=> cb.checked = true);
+      toggleAll.checked = true;
+      applyVisibility();
+    });
+
+    btnClearAll.addEventListener('click', ()=>{
+      visibleSet.clear();
+      chips.querySelectorAll('input[type=checkbox]').forEach(cb=> cb.checked = false);
+      toggleAll.checked = false;
+      applyVisibility();
+    });
+
+    // Start auto-load ketika DOM siap
+    document.addEventListener('DOMContentLoaded', loadDefaultCSV);
+  </script>
+</body>
+</html>

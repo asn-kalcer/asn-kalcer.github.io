@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Summary — Auto Load</title>
+  
+  <!-- ==== (1) CSS Aplikasi Asli (dipertahankan) ==== -->
+  <style>
+    :root{
+      --bg:#f8fafc; /* slate-50 */
+      --card:#ffffff;
+      --ink:#0f172a; /* slate-900 */
+      --muted:#475569; /* slate-600 */
+      --soft:#94a3b8; /* slate-400 */
+      --border:#e2e8f0; /* slate-200 */
+      --accent:#2563eb; /* blue-600 */
+      --accent-2:#dbeafe; /* blue-100 */
+      --chip:#eef2ff; /* indigo-50 */
+      --chip-ink:#3730a3; /* indigo-800 */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,Ubuntu,"Noto Sans",sans-serif}
+    .container{max-width:980px;margin:0 auto;padding:24px}
+
+    header{position:sticky;top:0;background:linear-gradient(180deg,#ffffffee,#ffffffdd 65%,#ffffff00);backdrop-filter:saturate(1.2) blur(6px);z-index:5;border-bottom:1px solid var(--border)}
+    header .bar{display:flex;gap:12px;align-items:center;max-width:980px;margin:0 auto;padding:12px 24px}
+    .logo{font-weight:800;letter-spacing:0.2px}
+    .logo .x{font-size:18px;display:inline-block;transform:translateY(-1px)}
+
+    .panel{display:grid;grid-template-columns:1fr;gap:12px;margin:16px 0}
+    .controls{display:flex;flex-wrap:wrap;gap:8px}
+    .controls > *{border:1px solid var(--border);background:#fff;color:var(--ink);padding:10px 12px;border-radius:12px}
+    .controls input[type="text"]{min-width:220px;flex:1}
+    .controls select{min-width:180px}
+    .hint{font-size:12px;color:var(--muted)}
+
+    .stream{display:grid;gap:12px}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:12px}
+    .avatar{width:44px;height:44px;border-radius:999px;background:var(--accent-2);border:1px solid var(--border);display:grid;place-items:center;font-weight:700;color:var(--accent)}
+    .meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .name{font-weight:700}
+    .handle,.time{color:var(--muted)}
+    .badge{font-size:12px;background:var(--chip);color:var(--chip-ink);border:1px solid #e0e7ff;padding:2px 8px;border-radius:999px}
+    .text{white-space:pre-wrap}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+    .chip{font-size:12px;background:#f1f5f9;border:1px solid var(--border);color:#0f172a;padding:2px 8px;border-radius:999px}
+
+    .stats{display:flex;gap:18px;color:var(--muted);font-size:14px;align-items:center}
+    .stat{display:inline-flex;gap:6px;align-items:center}
+    .stat b{color:var(--ink);font-weight:700}
+    .stat a{color:inherit;text-decoration:none;display:inline-flex;align-items:center;gap:6px}
+    .stat a:hover{text-decoration:underline}
+
+    .toolbar{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+    .count{color:var(--muted)}
+
+    .hr{height:1px;background:var(--border);margin:8px 0}
+
+    .empty{padding:32px;border:1px dashed var(--border);border-radius:16px;background:#fff;color:var(--muted);text-align:center}
+
+    .footer-controls{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-top:8px}
+    .pagination{display:flex;gap:6px}
+    .pagination button{padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer}
+    .pagination button[disabled]{opacity:.5;cursor:not-allowed}
+
+    details.inline{display:inline}
+    details.inline summary{cursor:pointer;display:inline;color:var(--accent)}
+
+    /* ===== Modal styles (shared) */
+    .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.35);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50}
+    .modal{width:min(920px,calc(100% - 32px));max-height:82vh;overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px;padding:16px}
+    .modal h3{margin:0 0 8px 0}
+    .modal .muted{color:var(--muted);font-size:12px}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .divider{height:1px;background:var(--border);margin:10px 0}
+
+    /* Advanced Search */
+    .cond-row{display:grid;grid-template-columns:minmax(160px,1fr) 2fr auto;gap:8px;align-items:center;margin-bottom:8px}
+    .modal .btn{padding:8px 10px;border-radius:10px}
+    .dates input[type="date"], .modal select, .modal input[type="text"], textarea{padding:8px 10px;border-radius:10px;border:1px solid var(--border)}
+    textarea{width:100%;min-height:160px}
+  </style>
+
+  <!-- ==== (2) CSS App Shell (diletakkan SETELAH CSS asli) ==== -->
+  <style>
+    :root{
+      --sb-bg:#ffffff; --sb-border:#e2e8f0; --sb-ink:#0f172a; --sb-muted:#64748b;
+      --sb-accent:#2563eb; --sb-accent-ink:#ffffff; --sb-shadow:0 1px 2px rgba(15,23,42,.06);
+    }
+    /* ===== App Shell ===== */
+    .app-shell{display:grid;grid-template-columns:280px 1fr;min-height:100dvh;background:#f8fafc;color:var(--sb-ink)}
+    .app-shell.collapsed{grid-template-columns:100px 1fr}
+    .app-sidebar{position:sticky;top:0;height:100dvh;padding:12px}
+    .sb-card{height:100%;background:var(--sb-bg);border:1px solid var(--sb-border);border-radius:16px;box-shadow:var(--sb-shadow);display:flex;flex-direction:column}
+    .sb-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--sb-border)}
+    .sb-brand{display:flex;align-items:center;gap:10px}
+    .sb-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#60a5fa,#34d399)}
+    .sb-title{font-weight:800}
+    .sb-toggle{cursor:pointer;border:1px solid var(--sb-border);background:#fff;border-radius:10px;padding:8px}
+    .sb-nav{padding:12px;display:grid;gap:8px;overflow:auto}
+    .sb-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--sb-border);border-radius:12px;background:#fff;color:var(--sb-ink);text-decoration:none;font-weight:600}
+    .sb-link:hover{border-color:#cbd5e1}
+    .sb-link.active{background:var(--sb-accent);border-color:transparent;color:var(--sb-accent-ink)}
+    .sb-ico{width:22px;height:22px;display:inline-grid;place-items:center}
+    .sb-ico svg{width:20px;height:20px}
+    .sb-label{white-space:nowrap}
+    .sb-help{margin-top:auto;padding:12px;border-top:1px dashed var(--sb-border);font-size:13px;color:var(--sb-muted)}
+    /* Collapsed: sembunyikan label, center ikon */
+    .app-shell.collapsed .sb-title,.app-shell.collapsed .sb-label,.app-shell.collapsed .sb-help{display:none}
+    .app-shell.collapsed .sb-head{justify-content:center}
+    .app-main{padding:20px}
+    /* Optional: konten kartu di halaman */
+    .app-card{background:#fff;border:1px solid var(--sb-border);border-radius:16px;box-shadow:var(--sb-shadow);padding:16px}
+  </style>
+
+<style>
+    *{box-sizing:border-box}body{margin:0;font-family:'Inter',sans-serif;background:#f9fafb;color:#222}
+    .app-main{padding:1.5rem 2rem;max-width:980px;margin:auto}
+    h1{font-size:1.8rem;margin-bottom:.5rem;color:#1e293b}
+    h2{font-size:1.2rem;margin-top:1.5rem;color:#334155;border-bottom:2px solid #e2e8f0;padding-bottom:.25rem}
+    p{line-height:1.6;margin:.3rem 0}
+    .card{background:#fff;border:1px solid #e2e8f0;border-radius:1rem;padding:1.2rem 1.5rem;margin-top:1.2rem;box-shadow:0 4px 12px rgba(0,0,0,.03)}
+    .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;margin-top:.6rem}
+    .stat{background:#f1f5f9;border-radius:.8rem;padding:.8rem 1rem;text-align:center}
+    .stat .num{font-weight:800;font-size:1.3rem;color:#1d4ed8}
+    table{width:100%;border-collapse:collapse;margin-top:.6rem}
+    th,td{padding:.5rem .7rem;border-bottom:1px solid #e5e7eb;text-align:left}
+    th{background:#f1f5f9;font-weight:600;color:#475569}
+    .note{font-size:.9rem;color:#475569;margin-top:.5rem}
+
+   /* Button */
+.btn-primary{
+  display:inline-flex;align-items:center;gap:.5rem;
+  background:#1d4ed8;color:#fff;border:1px solid #1e40af;
+  padding:.6rem 1rem;border-radius:.7rem;font-weight:600;
+  cursor:pointer;box-shadow:0 6px 16px rgba(29,78,216,.18);
+}
+.btn-primary:hover{background:#1e40af}
+
+/* Modal */
+.modal-backdrop{
+  position:fixed;inset:0;background:rgba(15,23,42,.25);
+  backdrop-filter:blur(3px);
+  display:none;align-items:center;justify-content:center;z-index:9999;
+}
+.modal-backdrop.show{display:flex}
+.modal{
+  width:min(1180px,94vw);max-height:86vh;overflow:hidden;
+  background:#fff;border:1px solid #e2e8f0;border-radius:1rem;
+  box-shadow:0 20px 80px rgba(0,0,0,.2);
+  display:flex;flex-direction:column;
+}
+.modal-head{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:1rem 1.25rem;border-bottom:1px solid #eef2f7;background:#f8fafc
+}
+.modal-head h3{margin:0;font-size:1.05rem;color:#0f172a}
+.modal-body{padding:1rem;overflow:auto}
+.modal-actions{padding:.8rem 1.25rem;border-top:1px solid #eef2f7;background:#fafafa;text-align:right}
+.modal-close{
+  border:1px solid #e5e7eb;background:#fff;border-radius:.6rem;padding:.45rem .7rem;cursor:pointer
+}
+.modal-close:hover{background:#f3f4f6}
+
+/* Card list (grid) */
+.cards-grid{
+  display:grid;
+  grid-template-columns: repeat(12,1fr);
+  gap:12px;
+}
+.data-card{
+  grid-column: span 12;
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:14px 14px 12px;
+  box-shadow:0 8px 28px rgba(2,6,23,.06);
+  transition:transform .12s ease, box-shadow .12s ease, border-color .12s ease;
+}
+@media (min-width:720px){ .data-card{ grid-column: span 6; } }
+@media (min-width:1040px){ .data-card{ grid-column: span 4; } }
+.data-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 16px 36px rgba(2,6,23,.08);
+  border-color:#dbeafe;
+}
+
+/* Card header */
+.card-top{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px
+}
+.user{
+  display:flex;align-items:center;gap:8px;min-width:0
+}
+.avatar{
+  width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,#dbeafe,#f1f5f9);border:1px solid #e5e7eb;
+}
+.user-name{font-weight:700;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.user-id{font-size:.78rem;color:#64748b}
+
+/* Badges */
+.badges{display:flex;flex-wrap:wrap;gap:6px}
+.badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:.22rem .5rem;border-radius:999px;font-size:.76rem;font-weight:600;
+  border:1px solid #e5e7eb;background:#f8fafc;color:#0f172a
+}
+.badge.kind{background:#eef2ff;border-color:#e0e7ff}
+.badge.sentimen.negatif{background:#fee2e2;border-color:#fecaca;color:#991b1b}
+.badge.emosi{background:#fff7ed;border-color:#ffedd5}
+.badge.intensi{background:#ecfeff;border-color:#cffafe}
+.badge.aspek{background:#f0fdf4;border-color:#dcfce7}
+
+/* Text body */
+.tweet{
+  margin:.35rem 0 .5rem;
+  color:#0f172a;line-height:1.55;word-break:break-word;
+}
+.meta{
+  display:flex;flex-wrap:wrap;gap:10px;
+  font-size:.82rem;color:#475569;margin-top:.2rem
+}
+.kv{
+  background:#f8fafc;border:1px solid #e5e7eb;border-radius:8px;
+  padding:.25rem .5rem;display:inline-flex;gap:.4rem;align-items:center
+}
+.kv b{color:#0f172a}
+
+/* Counts row */
+.counts{
+  display:flex;gap:10px;flex-wrap:wrap;margin-top:8px
+}
+.count{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:.28rem .55rem;border:1px solid #e5e7eb;border-radius:8px;
+  font-size:.82rem;color:#0f172a;background:#fafafa
+}
+
+/* Footer of card */
+.card-foot{
+  display:flex;justify-content:space-between;align-items:center;margin-top:8px
+}
+.card-actions{display:flex;gap:8px}
+.btn-ghost{
+  border:1px solid #e5e7eb;background:#fff;border-radius:.55rem;
+  padding:.35rem .6rem;cursor:pointer;font-size:.86rem;color:#0f172a
+}
+.btn-ghost:hover{background:#f3f4f6}
+
+/* Small text */
+.small{font-size:.82rem;color:#475569}
+
+/* Search (opsional kecil) */
+.toolbar{
+  display:flex;gap:8px;align-items:center;margin-bottom:.6rem;flex-wrap:wrap
+}
+.input{
+  border:1px solid #e5e7eb;border-radius:.55rem;padding:.45rem .6rem;font:inherit;min-width:220px
+}
+
+  </style>
+</head>
+<body>
+    <div id="APP" class="app-shell">
+      <!-- Sidebar -->
+      <aside class="app-sidebar" aria-label="Navigasi Layanan">
+        <div class="sb-card">
+          <div class="sb-head">
+            <div class="sb-brand"><div class="sb-title">TVRI on <span class="x">𝕏</span></div></div>
+            <button id="sbToggle" class="sb-toggle" title="Sembunyikan/Expand sidebar" aria-expanded="true">⟨⟩</button>
+          </div>
+          <nav class="sb-nav">
+            <a class="sb-link active" href="summary.html" title="Summary"><span class="sb-ico">{#icon-doc#}</span><span class="sb-label">Summary</span></a>
+            <a class="sb-link" href="index.html"><span class="sb-ico">{#icon-doc#}</span><span class="sb-label">Data Viewer</span></a>
+            <a class="sb-link" href="distribusi_nilai.html"><span class="sb-ico">{#icon-chart#}</span><span class="sb-label">Distribusi Nilai</span></a>
+            <a class="sb-link" href="persilangan_nilai.html"><span class="sb-ico">{#icon-grid#}</span><span class="sb-label">Persilangan Nilai</span></a>
+            <a class="sb-link" href="timeline_distribusi.html"><span class="sb-ico">{#icon-trend#}</span><span class="sb-label">Analisis Timeline</span></a>
+            <a class="sb-link" href="analisis_interaksi.html"><span class="sb-ico">{#icon-network#}</span><span class="sb-label">Analisis Interaksi</span></a>
+          </nav>
+        </div>
+      </aside>
+  
+      <main class="app-main">
+        <header><h1>Ringkasan Analisis Tweet Negatif CPNS</h1></header>
+  
+        <section class="card">
+          <h2>Statistik Umum</h2>
+          <div class="stat-grid">
+            <div class="stat"><div class="num">174</div><div>Total Tweet</div></div>
+            <div class="stat"><div class="num">97</div><div>Komentar</div></div>
+            <div class="stat"><div class="num">40</div><div>Tweet Asli</div></div>
+            <div class="stat"><div class="num">37</div><div>Retweet</div></div>
+          </div>
+        </section>
+
+        <section class="card">
+            <div>
+                <h2>Kesimpulan Utama</h2>
+                <p>Semua tweet bernada <b>negatif</b> terhadap sistem seleksi CPNS. Nada dominan berupa kritik, kekecewaan, dan curhat pribadi.</p>
+                <p><b>Aspek paling disorot:</b> wawancara yang dianggap subjektif dan nepotistik.</p>
+                <p>Banyak tweet memperlihatkan ketidakpercayaan publik terhadap transparansi dan keadilan seleksi.</p>
+            </div>
+        </section>
+
+        <section class="card">
+            <div>
+                <h2>Top Narasi / Alasan</h2>
+                <ul>
+                  <li>Keluhan sulitnya tes CPNS dibanding rekrutmen lain.</li>
+                  <li>Sindiran pusat–daerah terkait wawancara.</li>
+                  <li>Kecurigaan manipulasi nilai wawancara.</li>
+                  <li>Anggapan tes kesehatan & wawancara sebagai faktor gugur non-obyektif.</li>
+                  <li>Sindiran keras terhadap nepotisme dalam wawancara oleh pejabat lama.</li>
+                </ul>
+            </div>
+        </section>
+
+        <section class="card">
+            <div>
+
+                <h2>Semua Data</h2>
+                <p>Klik tombol untuk menampilkan seluruh baris data sebagai kartu dari <code>data/negative_only.csv</code>.</p>
+                <button id="openCardModal" class="btn-primary">Lihat Semua Data</button>
+                <div class="note">Kartu akan dimuat saat popup dibuka.</div>
+            </div>
+        </section>
+
+        <section class="card">
+            <div>
+                <h2>Aspek yang Paling Sering Dibahas</h2>
+                <table>
+                  <tr><th>Aspek</th><th>Jumlah Tweet</th></tr>
+                  <tr><td>Wawancara</td><td>20</td></tr>
+                  <tr><td>Subjektivitas Penilaian</td><td>14</td></tr>
+                  <tr><td>Nepotisme</td><td>8</td></tr>
+                  <tr><td>Nilai & Transparansi</td><td>8</td></tr>
+                  <tr><td>SKB & Kegagalan</td><td>6–7</td></tr>
+                </table>
+                <div class="note">Sorotan utama adalah wawancara yang dianggap subjektif, nepotistik, dan tidak transparan.</div>
+            </div>
+        </section>
+
+  
+        <section class="card">
+            <div>
+                <h2>Distribusi Emosi</h2>
+                <p>Emosi dominan yang muncul dari 174 tweet negatif terkait seleksi CPNS.</p>
+                <table>
+                  <tr><th>Emosi</th><th>Jumlah</th></tr>
+                  <tr><td>Kritik</td><td>49</td></tr>
+                  <tr><td>Kecewa</td><td>37</td></tr>
+                  <tr><td>Sedih</td><td>14</td></tr>
+                  <tr><td>Waspada</td><td>10</td></tr>
+                  <tr><td>Lelah</td><td>8</td></tr>
+                  <tr><td>Marah</td><td>7</td></tr>
+                  <tr><td>Lainnya (frustrasi, sinis, sarkas, dll)</td><td>~49</td></tr>
+                </table>
+                <div class="note">Nada umum: kritik, kekecewaan, dan rasa frustrasi terhadap proses seleksi.</div>
+            </div>
+        </section>
+  
+        <section class="card">
+            <div>
+                <h2>Distribusi Intensi</h2>
+                <table>
+                  <tr><th>Intensi</th><th>Jumlah</th></tr>
+                  <tr><td>Kritik</td><td>71</td></tr>
+                  <tr><td>Cerita pribadi</td><td>30</td></tr>
+                  <tr><td>Curhat</td><td>19</td></tr>
+                  <tr><td>Opini</td><td>15</td></tr>
+                  <tr><td>Saran / keluhan / usulan</td><td>16</td></tr>
+                </table>
+                <div class="note">Mayoritas tweet berisi kritik dan pengalaman pribadi yang menyoroti proses CPNS.</div>
+            </div>
+        </section>
+  
+        
+      </main>
+    </div>
+
+    <!-- Modal: Semua Data -->
+<!-- Modal: Semua Data (Cards) -->
+<div id="dataCardModal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal" role="document">
+      <div class="modal-head">
+        <h3>Semua Data (negative_only.csv)</h3>
+        <button class="modal-close" id="closeCardModal" aria-label="Tutup">Tutup ✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="toolbar">
+          <input id="searchInput" class="input" type="search" placeholder="Cari teks, user, emosi, intensi, aspek..." />
+          <span id="rowsInfo" class="small">Memuat data…</span>
+        </div>
+        <div id="cardsGrid" class="cards-grid" aria-live="polite" aria-busy="true"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-close" id="closeCardModal2">Tutup</button>
+      </div>
+    </div>
+  </div>
+  
+  <script>
+  /** ===== Modal open/close ===== */
+  const cardModal = document.getElementById('dataCardModal');
+  const openCardBtn = document.getElementById('openCardModal');
+  const closeCardBtn = document.getElementById('closeCardModal');
+  const closeCardBtn2 = document.getElementById('closeCardModal2');
+  const cardsGrid = document.getElementById('cardsGrid');
+  const rowsInfo  = document.getElementById('rowsInfo');
+  const searchInput = document.getElementById('searchInput');
+  
+  let RAW_ROWS = [];     // seluruh rows (array of arrays)
+  let HEADERS  = [];     // header (array of strings)
+  let VIEW_ROWS = [];    // rows yang sudah difilter (tanpa header)
+  
+  function openCardModalFn(){
+    cardModal.classList.add('show');
+    cardModal.setAttribute('aria-hidden','false');
+    if(!cardModal.dataset.loaded){ loadAndRenderCSVasCards(); }
+    setTimeout(()=>searchInput?.focus(), 120);
+  }
+  function closeCardModalFn(){
+    cardModal.classList.remove('show');
+    cardModal.setAttribute('aria-hidden','true');
+  }
+  openCardBtn.addEventListener('click', openCardModalFn);
+  closeCardBtn.addEventListener('click', closeCardModalFn);
+  closeCardBtn2.addEventListener('click', closeCardModalFn);
+  cardModal.addEventListener('click', (e)=>{ if(e.target === cardModal) closeCardModalFn(); });
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && cardModal.classList.contains('show')) closeCardModalFn(); });
+  
+  /** ===== CSV fetch + parsing (auto delimiter) ===== */
+  async function loadAndRenderCSVasCards(){
+    try{
+      const res = await fetch('data/negative_only.csv', {cache:'no-store'});
+      if(!res.ok) throw new Error('Gagal memuat CSV: ' + res.status);
+      const text = await res.text();
+  
+      const delimiter = detectDelimiter(text);
+      const rows = parseCSV(text, delimiter);
+      if(!rows.length) throw new Error('CSV kosong');
+  
+      RAW_ROWS = rows;
+      HEADERS = rows[0];
+      VIEW_ROWS = rows.slice(1);
+  
+      renderCards(VIEW_ROWS);
+      rowsInfo.textContent = `Sumber: data/negative_only.csv — Total baris: ${VIEW_ROWS.length.toLocaleString('id-ID')}`;
+      rowsInfo.classList.remove('small');
+      cardModal.dataset.loaded = '1';
+      cardsGrid.setAttribute('aria-busy','false');
+    }catch(err){
+      console.error(err);
+      cardsGrid.innerHTML = `<div class="data-card"><div class="tweet">Gagal memuat data: ${err?.message || 'Unknown error'}</div></div>`;
+    }
+  }
+  
+  function detectDelimiter(text){
+    const firstLine = text.split(/\r?\n/)[0] || '';
+    const comma = (firstLine.match(/,/g)||[]).length;
+    const tab   = (firstLine.match(/\t/g)||[]).length;
+    return tab > comma ? '\t' : ',';
+  }
+  
+  function parseCSV(text, delimiter=','){
+    const rows = [];
+    let field = '', row = [], inQuotes = false, i = 0;
+    for(; i < text.length; i++){
+      const char = text[i], next = text[i+1];
+      if(inQuotes){
+        if(char === '"'){
+          if(next === '"'){ field += '"'; i++; } else { inQuotes = false; }
+        }else field += char;
+      }else{
+        if(char === '"'){ inQuotes = true; }
+        else if(char === delimiter){ row.push(field); field=''; }
+        else if(char === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+        else if(char === '\r'){ /* ignore */ }
+        else field += char;
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    while(rows.length && rows[rows.length-1].every(c=>c==='')) rows.pop();
+    return rows;
+  }
+  
+  /** ===== Render cards ===== */
+  function renderCards(rows){
+    if(!rows || !rows.length){ cardsGrid.innerHTML = '<div class="small">Tidak ada data.</div>'; return; }
+    const H = indexHeaders(HEADERS);
+    const frag = document.createDocumentFragment();
+  
+    rows.forEach(r=>{
+      // Ambil field aman (fallback '')
+      const kind = r[H.kind] || '';
+      const tweet_id = r[H.tweet_id] || '';
+      const created_at = r[H.created_at] || '';
+      const user_name = r[H.user_screen_name] || '';
+      const user_id = r[H.user_id] || '';
+      const text = r[H.text] || '';
+      const parent_text = r[H.parent_tweet_text] || '';
+      const emosi = r[H.emosi] || '';
+      const sentimen = r[H.sentimen] || '';
+      const intensi = r[H.intensi] || '';
+      const aspek = r[H.aspek] || '';
+      const alasan = r[H.alasan] || '';
+      const replyTo = r[H.in_reply_to_id] || '';
+      const rt = r[H.retweet_count] || '0';
+      const fav = r[H.favorite_count] || '0';
+  
+      const card = document.createElement('article');
+      card.className = 'data-card';
+  
+      // Header: user + badges
+      const top = document.createElement('div');
+      top.className = 'card-top';
+  
+      const user = document.createElement('div');
+      user.className = 'user';
+      user.innerHTML = `
+        <div class="avatar" aria-hidden="true"></div>
+        <div>
+          <div class="user-name" title="${escapeHTML(user_name)}">@${escapeHTML(user_name)}</div>
+          <div class="user-id">ID: ${escapeHTML(user_id)}</div>
+        </div>
+      `;
+  
+      const badges = document.createElement('div');
+      badges.className = 'badges';
+      badges.append(
+        makeBadge(kind||'—','kind'),
+        makeBadge(sentimen||'—','sentimen ' + (sentimen.toLowerCase()==='negatif'?'negatif':'')),
+        makeBadge(emosi||'—','emosi'),
+        makeBadge(intensi||'—','intensi'),
+        makeBadge(aspek||'—','aspek')
+      );
+  
+      top.append(user, badges);
+  
+      // Body: text tweet
+      const tweet = document.createElement('div');
+      tweet.className = 'tweet';
+      tweet.innerHTML = linkify(escapeHTML(text || '(tanpa teks)'));
+  
+      // Meta: created_at + tweet_id + reply_to
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.append(
+        makeKV('Waktu', created_at || '—'),
+        makeKV('Tweet ID', tweet_id || '—'),
+        replyTo ? makeKV('Reply to', replyTo) : document.createComment('no-reply')
+      );
+  
+      // Parent (optional)
+      let parentEl = null;
+      if(parent_text){
+        parentEl = document.createElement('div');
+        parentEl.className = 'tweet';
+        parentEl.style.borderLeft = '3px solid #e5e7eb';
+        parentEl.style.paddingLeft = '10px';
+        parentEl.style.marginTop = '8px';
+        parentEl.style.background = '#fafafa';
+        parentEl.innerHTML = `<span class="small">Parent:</span> ${linkify(escapeHTML(parent_text))}`;
+      }
+  
+      // Counts
+      const counts = document.createElement('div');
+      counts.className = 'counts';
+      counts.append(
+        makeCount('Retweet', rt),
+        makeCount('Favorite', fav)
+      );
+  
+      // Footer actions
+      const foot = document.createElement('div');
+      foot.className = 'card-foot';
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+  
+      // Link X/Twitter (best-effort, jika ID valid)
+      const xUrl = buildXUrl(tweet_id);
+      if(xUrl){
+        const a = document.createElement('a');
+        a.className = 'btn-ghost';
+        a.textContent = 'Buka di X';
+        a.href = xUrl;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        actions.appendChild(a);
+      }
+  
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn-ghost';
+      copyBtn.textContent = 'Salin Teks';
+      copyBtn.addEventListener('click',()=>{
+        navigator.clipboard.writeText(text || '').then(()=>{
+          copyBtn.textContent = 'Tersalin ✓';
+          setTimeout(()=>copyBtn.textContent='Salin Teks', 1200);
+        });
+      });
+      actions.appendChild(copyBtn);
+  
+      foot.append(actions, document.createElement('div'));
+  
+      // Compose card
+      card.append(top, tweet, meta);
+      if(parentEl) card.append(parentEl);
+      card.append(counts, foot);
+  
+      frag.appendChild(card);
+    });
+  
+    cardsGrid.innerHTML = '';
+    cardsGrid.appendChild(frag);
+  }
+  
+  /** ===== Helpers ===== */
+  function indexHeaders(headers){
+    const idx = {};
+    const map = {
+      kind:'kind',
+      tweet_id:'tweet_id',
+      parent_tweet_id:'parent_tweet_id',
+      parent_tweet_text:'parent_tweet_text',
+      created_at:'created_at',
+      user_id:'user_id',
+      user_screen_name:'user_screen_name',
+      text:'text',
+      in_reply_to_id:'in_reply_to_id',
+      retweet_count:'retweet_count',
+      favorite_count:'favorite_count',
+      relevan:'relevan',
+      sentimen:'sentimen',
+      emosi:'emosi',
+      intensi:'intensi',
+      aspek:'aspek',
+      alasan:'alasan'
+    };
+    headers.forEach((h,i)=>{
+      const key = String(h||'').trim().toLowerCase().replace(/\s+/g,'_');
+      if(map[key]) idx[map[key]] = i;
+    });
+    // fallback just in case
+    Object.keys(map).forEach(k=>{ if(idx[k]===undefined) idx[k]=-1; });
+    return idx;
+  }
+  
+  function makeBadge(text, cls){
+    const span = document.createElement('span');
+    span.className = `badge ${cls}`;
+    span.textContent = truncate(text, 40);
+    span.title = text;
+    return span;
+  }
+  function makeKV(k,v){
+    const el = document.createElement('span');
+    el.className = 'kv';
+    el.innerHTML = `<b>${escapeHTML(k)}:</b> ${escapeHTML(v)}`;
+    return el;
+  }
+  function makeCount(k,v){
+    const el = document.createElement('span');
+    el.className = 'count';
+    el.innerHTML = `<b>${escapeHTML(k)}</b> ${escapeHTML(String(v||'0'))}`;
+    return el;
+  }
+  function escapeHTML(s){
+    return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+  function truncate(s, n){
+    s = String(s||''); return s.length>n ? s.slice(0,n-1)+'…' : s;
+  }
+  function linkify(s){
+    // link @mention, #hashtag, URL sederhana
+    return s
+     .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank" rel="noopener">$1</a>')
+     .replace(/(^|\s)@([a-zA-Z0-9_]{1,15})/g, '$1<a href="https://x.com/$2" target="_blank" rel="noopener">@$2</a>')
+     .replace(/(^|\s)#([a-zA-Z0-9_]+)/g, '$1<a href="https://x.com/hashtag/$2" target="_blank" rel="noopener">#$2</a>');
+  }
+  function buildXUrl(tweetId){
+    const id = String(tweetId||'').trim();
+    if(!id) return '';
+    // handle jika CSV sempat jadi notasi ilmiah: ambil hanya digit
+    const digits = id.match(/\d{5,}/g);
+    if(!digits) return '';
+    return `https://x.com/i/web/status/${digits.join('')}`;
+  }
+  
+  /** ===== Quick search (filter lokal di modal) ===== */
+  searchInput?.addEventListener('input', ()=>{
+    const q = searchInput.value.trim().toLowerCase();
+    if(!q){ renderCards(VIEW_ROWS); rowsInfo.textContent = `Sumber: data/negative_only.csv — Total baris: ${VIEW_ROWS.length.toLocaleString('id-ID')}`; return; }
+    const H = indexHeaders(HEADERS);
+    const fields = ['user_screen_name','text','parent_tweet_text','emosi','intensi','aspek','alasan','sentimen','kind'];
+    const filtered = VIEW_ROWS.filter(r=>{
+      return fields.some(f=>{
+        const val = r[H[f]] || '';
+        return String(val).toLowerCase().includes(q);
+      });
+    });
+    renderCards(filtered);
+    rowsInfo.textContent = `Sumber: data/negative_only.csv — Ditemukan: ${filtered.length.toLocaleString('id-ID')} / ${VIEW_ROWS.length.toLocaleString('id-ID')}`;
+  });
+  </script>
+  
+  
+    <!-- script sidebar dari struktur aslimu -->
+    <script>
+      const ICONS = {
+        chart:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="7" rx="1"/><rect x="12" y="6" width="3" height="11" rx="1"/><rect x="17" y="12" width="3" height="5" rx="1"/></svg>`,
+        grid:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 3v18"/></svg>`,
+        trend:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 7-7"/><path d="M21 21H3"/></svg>`,
+        doc:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h6M8 9h3"/></svg>`,
+        network:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><circle cx="4" cy="12" r="2"/><circle cx="12" cy="4" r="2"/><circle cx="20" cy="12" r="2"/><circle cx="12" cy="20" r="2"/><line x1="6" y1="12" x2="10" y2="12"/><line x1="12" y1="6" x2="12" y2="10"/><line x1="14" y1="12" x2="18" y2="12"/><line x1="12" y1="14" x2="12" y2="18"/></svg>`
+      };
+      document.querySelectorAll('.sb-ico').forEach(el=>{
+        const html = el.innerHTML;
+        const key=/\{#icon-([a-z]+)#\}/.exec(html);
+        if(key&&ICONS[key[1]]) el.innerHTML=ICONS[key[1]];
+      });
+      const APP=document.getElementById('APP'),SB_TOGGLE=document.getElementById('sbToggle');
+      function applySBState(){const c=localStorage.getItem('sb-collapsed')==='1';APP.classList.toggle('collapsed',c);SB_TOGGLE.setAttribute('aria-expanded',c?'false':'true');}
+      SB_TOGGLE.addEventListener('click',()=>{const n=!(localStorage.getItem('sb-collapsed')==='1');localStorage.setItem('sb-collapsed',n?'1':'0');applySBState();});
+      applySBState();
+    </script>
+
+
+
+  </body>
+</html>

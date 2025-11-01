@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Graf Relasi Akun — Berdasarkan Tag (@mention)</title>
+  <style>
+    :root{
+      --bg:#ffffff; --ink:#0f172a; --muted:#64748b; --border:#e2e8f0; --accent:#2563eb; --accent-ink:#ffffff;
+      --chip:#f8fafc; --chip-ink:#0f172a; --warning:#ef4444;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji'; color:var(--ink); background:var(--bg)}
+    header{display:flex;align-items:center;gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); position:sticky;top:0;background:var(--bg);z-index:10}
+    header h1{font-size:16px;margin:0}
+    header .badge{background:var(--chip);color:var(--chip-ink);padding:4px 8px;border-radius:999px;border:1px solid var(--border)}
+    .toolbar{display:flex;flex-wrap:wrap;gap:8px; align-items:center; margin-left:auto}
+    .group{display:flex;gap:8px;align-items:center;background:#fff;border:1px solid var(--border);padding:8px;border-radius:12px}
+    label{font-weight:600;color:var(--muted)}
+    input[type="text"], select{padding:8px 10px;border:1px solid var(--border);border-radius:10px;min-width:220px}
+    input[type="range"]{accent-color:var(--accent)}
+    button{padding:8px 12px;border:1px solid var(--border);background:#fff;border-radius:10px;cursor:pointer}
+    button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+
+    #status{padding:8px 16px;color:var(--muted)}
+    #cy{width:100%; height: calc(100vh - 120px);}  
+    .legend{display:flex;gap:12px;flex-wrap:wrap;align-items:center;padding:8px 16px;color:var(--muted);border-top:1px solid var(--border)}
+    .pill{border:1px solid var(--border);background:var(--chip);color:var(--chip-ink);padding:4px 8px;border-radius:999px}
+  </style>
+  <!-- CDN libs (compatible with GitHub Pages) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cytoscape-fcose@2.2.0/cytoscape-fcose.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Graf Relasi Akun — Tag (@mention)</h1>
+    <span class="badge">Sumber: <code>data/all.csv</code></span>
+    <div class="toolbar">
+      <div class="group">
+        <label for="search">Cari akun</label>
+        <input id="search" type="text" placeholder="contoh: tvri, tvrisport, @helmyyahya" />
+        <button id="btnSearch">Cari</button>
+        <button id="btnClear">Bersihkan</button>
+      </div>
+      <div class="group">
+        <label for="minWeight">Min interaksi</label>
+        <input id="minWeight" type="range" min="1" max="10" step="1" value="1" />
+        <span id="minWeightVal" class="pill">≥ 1</span>
+      </div>
+      <div class="group">
+        <button id="btnFit">Fit</button>
+        <button id="btnPng">Unduh PNG</button>
+        <button id="btnReload">Muat Ulang</button>
+      </div>
+    </div>
+  </header>
+
+  <div id="status">Menunggu data…</div>
+  <div id="cy"></div>
+  <div class="legend">
+    <span class="pill">Node = <strong>akun</strong> (user_screen_name atau <code>@mention</code>)</span>
+    <span class="pill">Edge berarah <strong>penulis → akun yang ditag</strong></span>
+    <span class="pill">Ketebalan edge = frekuensi penandaan</span>
+    <span class="pill">Klik node untuk menyorot semua koneksi masuk & keluar</span>
+  </div>
+
+  <script>
+  // ======= UTIL =======
+  const setStatus = (msg) => { document.getElementById('status').textContent = msg }
+  const norm = (s) => (s||'').toString().trim();
+
+  // Mention regex: username 1-15 chars, letters/digits/underscore (aturan X/Twitter)
+  function extractMentions(text){
+    const out = new Set();
+    const re = /(^|[^@\w])@([A-Za-z0-9_]{1,15})\b/g;
+    let m; const t = text || '';
+    while((m = re.exec(t)) !== null){ out.add(m[2]); }
+    return Array.from(out);
+  }
+
+  let cy;               // cytoscape instance
+  let allElements = []; // raw elements (nodes+edges)
+
+  async function loadCSV(defaultPath='data/all.csv'){
+    setStatus(`Memuat ${defaultPath} …`);
+    const res = await fetch(defaultPath, { cache: 'no-store' });
+    if(!res.ok){ setStatus(`Gagal memuat ${defaultPath}: ${res.status} ${res.statusText}`); return null; }
+    const text = await res.text();
+    return new Promise((resolve)=>{
+      Papa.parse(text, { header:true, skipEmptyLines:true, dynamicTyping:false, complete: (out)=> resolve(out.data) });
+    });
+  }
+
+  function buildGraph(rows){
+    // Kolom minimal: user_screen_name, text
+    const nodesSet = new Set();
+    const edgesMap = new Map(); // key: src→dst => weight
+
+    for(const r of rows){
+      const author = norm(r.user_screen_name) || norm(r.user_name) || '';
+      const text = r.text || r.full_text || r.tweet_text || '';
+      if(!author && !text) continue;
+
+      const mentions = extractMentions(text);
+      if(author) nodesSet.add(author);
+
+      for(const m of mentions){
+        const target = '@' + m; // tampilkan sebagai @handle
+        nodesSet.add(target);
+        if(!author) continue; // tidak ada sumber
+        if(author.toLowerCase() === target.toLowerCase()) continue; // hindari self-mention
+        const key = `${author}→${target}`;
+        edgesMap.set(key, (edgesMap.get(key)||0) + 1);
+      }
+    }
+
+    const nodes = Array.from(nodesSet).map(u => ({ data:{ id:u, label:u } }));
+    const edges = Array.from(edgesMap.entries()).map(([key,w])=>{
+      const [src,dst] = key.split('→');
+      return { data:{ id:`${src}__${dst}`, source:src, target:dst, weight:w } };
+    });
+
+    allElements = [...nodes, ...edges];
+  }
+
+  function renderGraph(){
+    if(cy){ cy.destroy(); cy=null }
+    cy = cytoscape({
+      container: document.getElementById('cy'),
+      elements: allElements,
+      layout: { name:'fcose', animate:false, randomize:true, nodeSeparation:80 },
+      wheelSensitivity: 0.2,
+      style: [
+        { selector:'node', style:{
+            'background-color':'#a7f3d0',
+            'label':'data(label)',
+            'font-size': 10,
+            'text-valign':'center',
+            'text-halign':'center',
+            'text-wrap':'wrap', 'text-max-width': 120,
+            'color':'#0f172a',
+            'border-color':'#10b981', 'border-width':1,
+            'width': 'mapData(degree, 0, 40, 10, 44)',
+            'height':'mapData(degree, 0, 40, 10, 44)'
+        }},
+        { selector:'edge', style:{
+            'width': 'mapData(weight, 1, 10, 1, 8)',
+            'line-color':'#64748b',
+            'curve-style':'bezier',
+            'target-arrow-shape':'triangle',
+            'target-arrow-color':'#64748b',
+            'arrow-scale':1.2,
+            'opacity':0.85
+        }},
+        { selector:'.highlight', style:{ 'background-color':'#60a5fa', 'border-color':'#2563eb', 'border-width':2 }},
+        { selector:'.dim', style:{ 'opacity':0.15 }},
+      ]
+    });
+
+    cy.ready(() => setStatus(`Graf siap — ${cy.nodes().length} akun, ${cy.edges().length} relasi.`));
+
+    cy.on('tap', 'node', (evt)=> focusNeighborhood(evt.target));
+    cy.on('tap', (evt)=>{ if(evt.target === cy) clearHighlights(); });
+  }
+
+  function focusNeighborhood(node){
+    const neighborhood = node.closedNeighborhood(); // node + edges + neighbors
+    cy.elements().addClass('dim');
+    neighborhood.removeClass('dim');
+    neighborhood.addClass('highlight');
+    cy.fit(neighborhood, 80);
+    setStatus(`Fokus: ${node.data('label')} — tetangga: ${node.neighborhood('node').length}`);
+  }
+
+  function clearHighlights(){
+    if(!cy) return;
+    cy.elements().removeClass('dim highlight');
+    cy.fit(cy.elements(), 60);
+    setStatus(`Graf siap — ${cy.nodes().length} akun, ${cy.edges().length} relasi.`);
+  }
+
+  function applyMinWeightFilter(minW){
+    if(!cy) return;
+    cy.edges().style('display','element');
+    cy.edges().forEach(e=>{ if((e.data('weight')||0) < minW) e.style('display','none'); });
+    // sembunyikan node yang terisolasi setelah filter
+    cy.nodes().forEach(n=>{
+      const visibleDeg = n.connectedEdges().filter(e=>e.style('display') !== 'none').length;
+      n.style('display', visibleDeg>0 ? 'element' : 'none');
+    });
+    setStatus(`Filter diterapkan (≥ ${minW}) — ${cy.nodes(':visible').length} akun, ${cy.edges(':visible').length} relasi.`)
+  }
+
+  // ======= UI wiring =======
+  document.getElementById('btnSearch').addEventListener('click', ()=>{
+    const q = norm(document.getElementById('search').value).toLowerCase();
+    if(!q || !cy){ clearHighlights(); return; }
+    const hit = cy.nodes().filter(n=> n.id().toLowerCase().includes(q) || (n.data('label')||'').toLowerCase().includes(q) );
+    if(hit.length){ focusNeighborhood(hit[0]) } else { setStatus(`Akun "${q}" tidak ditemukan`) }
+  });
+  document.getElementById('btnClear').addEventListener('click', ()=>{ document.getElementById('search').value=''; clearHighlights(); });
+  document.getElementById('btnFit').addEventListener('click', ()=> cy && cy.fit(cy.elements(), 60));
+  document.getElementById('btnPng').addEventListener('click', ()=>{
+    if(!cy) return;
+    const png = cy.png({ full:true, maxWidth:4096, maxHeight:4096, scale:2 });
+    const a = document.createElement('a'); a.href = png; a.download = 'graf-relasi-mention.png'; a.click();
+  });
+  document.getElementById('btnReload').addEventListener('click', init);
+
+  const range = document.getElementById('minWeight');
+  const rangeVal = document.getElementById('minWeightVal');
+  range.addEventListener('input', ()=>{ rangeVal.textContent = `≥ ${range.value}`; applyMinWeightFilter(parseInt(range.value,10)); });
+
+  // ======= INIT =======
+  async function init(){
+    setStatus('Memuat & memproses data…');
+    try{
+      const rows = await loadCSV('data/all.csv');
+      if(!rows){ return }
+      // validasi kolom minimal
+      const required = ['user_screen_name','text'];
+      const has = required.every(k => Object.prototype.hasOwnProperty.call(rows[0]||{}, k) || ['full_text','tweet_text'].some(alt=> Object.prototype.hasOwnProperty.call(rows[0]||{}, alt)));
+      if(!has){ setStatus(`Kolom wajib tidak lengkap. Minimal: user_screen_name, dan salah satu dari: text | full_text | tweet_text`); return; }
+
+      buildGraph(rows);
+      renderGraph();
+      applyMinWeightFilter(parseInt(range.value,10));
+    }catch(e){
+      console.error(e);
+      setStatus('Terjadi kesalahan saat memuat atau memproses data. Lihat konsol.');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

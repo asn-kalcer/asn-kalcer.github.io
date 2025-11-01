@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Persilangan Nilai — Autoload data/all.csv + Rentang Waktu</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+  <style>
+    :root{
+      --sb-bg:#ffffff; --sb-border:#e2e8f0; --sb-ink:#0f172a; --sb-muted:#64748b;
+      --sb-accent:#2563eb; --sb-accent-ink:#ffffff; --sb-shadow:0 1px 2px rgba(15,23,42,.06);
+      --bg:#f8fafc; --card:#ffffff; --ink:#0f172a; --muted:#475569; --accent:#2563eb; --accent-2:#dbeafe; --border:#e2e8f0; --danger:#dc2626;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial}
+
+    /* ===== App Shell ===== */
+    .app-shell{display:grid;grid-template-columns:280px 1fr;min-height:100dvh;background:#f8fafc;color:var(--sb-ink)}
+    .app-shell.collapsed{grid-template-columns:100px 1fr}
+    .app-sidebar{position:sticky;top:0;height:100dvh;padding:12px}
+    .sb-card{height:100%;background:var(--sb-bg);border:1px solid var(--sb-border);border-radius:16px;box-shadow:var(--sb-shadow);display:flex;flex-direction:column}
+    .sb-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--sb-border)}
+    .sb-brand{display:flex;align-items:center;gap:10px}
+    .sb-title{font-weight:800}
+    .sb-toggle{cursor:pointer;border:1px solid var(--sb-border);background:#fff;border-radius:10px;padding:8px}
+    .sb-nav{padding:12px;display:grid;gap:8px;overflow:auto}
+    .sb-link{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--sb-border);border-radius:12px;background:#fff;color:var(--sb-ink);text-decoration:none;font-weight:600}
+    .sb-link:hover{border-color:#cbd5e1}
+    .sb-link.active{background:var(--sb-accent);border-color:transparent;color:var(--sb-accent-ink)}
+    .sb-ico{width:22px;height:22px;display:inline-grid;place-items:center}
+    .sb-ico svg{width:20px;height:20px}
+    .sb-label{white-space:nowrap}
+    .sb-help{margin-top:auto;padding:12px;border-top:1px dashed var(--sb-border);font-size:13px;color:var(--sb-muted)}
+    .app-shell.collapsed .sb-title,.app-shell.collapsed .sb-label,.app-shell.collapsed .sb-help{display:none}
+
+    .app-main{padding:20px}
+    header.page-sticky{position:sticky;top:0;background:linear-gradient(180deg,var(--bg),rgba(248,250,252,.7));backdrop-filter:saturate(1.2) blur(6px);border-bottom:1px solid var(--border);z-index:10}
+    .container{max-width:1100px;margin:0 auto;padding:18px}
+    h1{font-size:20px;margin:0 0 6px 0}
+    p.sub{margin:0;color:var(--muted)}
+
+    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,.04);padding:16px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{cursor:pointer;font-weight:600;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink)}
+    button.primary{background:var(--accent);color:#fff;border-color:transparent}
+
+    .range{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .range input[type="date"]{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink)}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--border);border-radius:999px;background:#fff;font-size:12px;color:var(--muted)}
+
+    .table-wrap{margin-top:16px;overflow:auto;border:1px solid var(--border);border-radius:12px}
+    table{border-collapse:separate;border-spacing:0;width:100%;min-width:700px;background:#fff}
+    thead th{position:sticky;top:0;background:var(--accent-2);text-align:center}
+    th,td{border-bottom:1px solid var(--border);padding:8px 10px;vertical-align:middle}
+    th{white-space:normal;word-break:break-word;max-width:220px}
+    th:first-child, td:first-child{position:sticky;left:0;background:#fff}
+    tbody tr:nth-child(even) td{background:#fafbff}
+    tfoot td{font-weight:700;background:#f3f6ff}
+
+    .statbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .empty{padding:30px;text-align:center;color:var(--muted)}
+    .dl-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-top:8px}
+  </style>
+</head>
+<body>
+  <div id="APP" class="app-shell">
+    <aside class="app-sidebar" aria-label="Navigasi Layanan">
+      <div class="sb-card">
+        <div class="sb-head">
+          <div class="sb-brand"><div class="sb-title">TVRI on <span class="x">𝕏</span></div></div>
+          <button id="sbToggle" class="sb-toggle" title="Sembunyikan/Expand sidebar" aria-expanded="true">⟨⟩</button>
+        </div>
+        <nav class="sb-nav">
+          <a class="sb-link" href="index.html"><span class="sb-ico">{#icon-doc#}</span><span class="sb-label">Data Viewer</span></a>
+          <a class="sb-link" href="distribusi_nilai.html"><span class="sb-ico">{#icon-chart#}</span><span class="sb-label">Distribusi Nilai</span></a>
+          <a class="sb-link" href="persilangan_nilai.html"><span class="sb-ico">{#icon-grid#}</span><span class="sb-label">Persilangan Nilai</span></a>
+          <a class="sb-link" href="timeline_distribusi.html"><span class="sb-ico">{#icon-trend#}</span><span class="sb-label">Analisis Timeline</span></a>
+          <a class="sb-link" href="analisis_interaksi.html"><span class="sb-ico">{#icon-network#}</span><span class="sb-label">Analisis Interaksi</span></a>
+        </nav>
+      </div>
+    </aside>
+
+    <main class="app-main">
+      <header class="page-sticky">
+        <div class="container">
+          <h1>Distribusi Persilangan Nilai</h1>
+          <p class="sub">Sumber data: <code>data/all.csv</code> — dengan filter <b>rentang waktu</b> berdasarkan kolom <code>created_at</code>.</p>
+        </div>
+      </header>
+
+      <main class="container" style="display:grid;gap:16px">
+        <section class="card">
+          <div class="actions">
+            <span class="badge" id="fileInfo">Memuat <b>data/all.csv</b>…</span>
+            <div class="range" id="rangeWrap" hidden>
+              <span>Rentang:</span>
+              <input type="date" id="dateStart" aria-label="Tanggal mulai">
+              <span>→</span>
+              <input type="date" id="dateEnd" aria-label="Tanggal akhir">
+              <button id="applyRange">Terapkan Rentang</button>
+              <button id="clearRange">Reset</button>
+              <span class="badge" id="rangeInfo"></span>
+            </div>
+            <button id="btnConfig" disabled>Konfigurasi</button>
+            <button id="clear">Bersihkan</button>
+          </div>
+          <div class="statbar" id="stats"></div>
+        </section>
+
+        <section class="card">
+          <div id="output" class="table-wrap">
+            <div class="empty">Menyiapkan data…</div>
+          </div>
+          <div class="dl-row">
+            <span></span>
+            <button id="downloadPng" disabled>Download PNG</button>
+          </div>
+        </section>
+      </main>
+
+      <!-- Modal Konfigurasi -->
+      <div class="modal-backdrop" id="modalWrap" aria-hidden="true" style="position:fixed;inset:0;background:rgba(2,6,23,.35);backdrop-filter:blur(2px);display:none;align-items:center;justify-content:center;z-index:50">
+        <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle" style="width:100%;max-width:520px;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.15)">
+          <header>
+            <div class="container" style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)">
+              <h2 id="modalTitle" style="margin:0;font-size:18px">Konfigurasi Tabel</h2>
+              <button id="closeModal">Tutup</button>
+            </div>
+          </header>
+          <div class="content" style="padding:16px;display:grid;gap:12px">
+            <div class="field">
+              <label for="colA" class="title" style="font-weight:700">Kolom A (baris)</label>
+              <select id="colA" disabled style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink)"></select>
+            </div>
+            <div class="field">
+              <label for="colB" class="title" style="font-weight:700">Kolom B (kolom)</label>
+              <select id="colB" disabled style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;color:var(--ink)"></select>
+            </div>
+            <div class="field">
+              <label class="title" style="font-weight:700">Tampilan</label>
+              <div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+                <label class="check"><input type="checkbox" id="toggleHeat" checked> Heatmap warna</label>
+                <label class="check"><input type="checkbox" id="togglePctRow"> % per baris</label>
+                <label class="check"><input type="checkbox" id="togglePctCol"> % per kolom</label>
+              </div>
+            </div>
+            <div class="row" style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+              <button id="apply" class="primary">Terapkan</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const ICONS = {
+      chart:`<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 3v18h18'/><rect x='7' y='10' width='3' height='7' rx='1'/><rect x='12' y='6' width='3' height='11' rx='1'/><rect x='17' y='12' width='3' height='5' rx='1'/></svg>`,
+      grid:`<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='3' width='18' height='18' rx='2'/><path d='M3 9h18M9 3v18'/></svg>`,
+      trend:`<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M3 17l6-6 4 4 7-7'/><path d='M21 21H3'/></svg>`,
+      doc:`<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><path d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/><path d='M14 2v6h6'/><path d='M8 13h8M8 17h6M8 9h3'/></svg>`,
+      network: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"> <circle cx="12" cy="12" r="2"/> <circle cx="4"  cy="12" r="2"/> <circle cx="12" cy="4"  r="2"/> <circle cx="20" cy="12" r="2"/> <circle cx="12" cy="20" r="2"/> <line x1="6"  y1="12" x2="10" y2="12"/> <line x1="12" y1="6"  x2="12" y2="10"/> <line x1="14" y1="12" x2="18" y2="12"/> <line x1="12" y1="14" x2="12" y2="18"/> </svg>`,    
+    };
+    document.querySelectorAll('.sb-ico').forEach(el=>{ const key = /\{#icon-([a-z]+)#\}/.exec(el.innerHTML); el.innerHTML = key && ICONS[key[1]] ? ICONS[key[1]] : ICONS.grid; });
+
+    const APP = document.getElementById('APP');
+    const SB_TOGGLE = document.getElementById('sbToggle');
+    const applySBState=()=>{ const c = localStorage.getItem('sb-collapsed')==='1'; APP.classList.toggle('collapsed', c); SB_TOGGLE.setAttribute('aria-expanded', c?'false':'true'); };
+    SB_TOGGLE.addEventListener('click',()=>{ const next=!(localStorage.getItem('sb-collapsed')==='1'); localStorage.setItem('sb-collapsed',next?'1':'0'); applySBState(); });
+    applySBState();
+    (function autoActive(){ const path=location.pathname.split('/').pop(); document.querySelectorAll('.sb-link').forEach(a=>{ if(a.getAttribute('href').split('/').pop()===path) a.classList.add('active'); }); })();
+  </script>
+
+  <script>
+  (function(){
+    const $ = s=>document.querySelector(s);
+    const fileInfo = $('#fileInfo');
+    const stats = $('#stats');
+    const output = $('#output');
+    const btnConfig = $('#btnConfig');
+    const clearBtn = $('#clear');
+    const downloadPngBtn = $('#downloadPng');
+
+    // Range controls
+    const rangeWrap = $('#rangeWrap');
+    const dateStart = $('#dateStart');
+    const dateEnd = $('#dateEnd');
+    const applyRangeBtn = $('#applyRange');
+    const clearRangeBtn = $('#clearRange');
+    const rangeInfo = $('#rangeInfo');
+
+    // Modal controls
+    const modalWrap = $('#modalWrap');
+    const colA = $('#colA');
+    const colB = $('#colB');
+    const toggleHeat = $('#toggleHeat');
+    const togglePctRow = $('#togglePctRow');
+    const togglePctCol = $('#togglePctCol');
+    const applyBtn = $('#apply');
+    const closeModalBtn = $('#closeModal');
+
+    let rawData=[];      // semua baris
+    let filtered=[];     // hasil filter tanggal
+    let headers=[];
+    let createdKey='created_at';
+    let last=null;       // cache hasil computeCross
+    let chosenA='';
+    let chosenB='';
+    let minDate=null, maxDate=null; // batas tanggal dari data
+
+    function showModal(){ modalWrap.style.display='flex'; modalWrap.setAttribute('aria-hidden','false'); }
+    function hideModal(){ modalWrap.style.display='none'; modalWrap.setAttribute('aria-hidden','true'); }
+    btnConfig.addEventListener('click', showModal);
+    closeModalBtn.addEventListener('click', hideModal);
+    modalWrap.addEventListener('click', (e)=>{ if(e.target===modalWrap) hideModal(); });
+
+    clearBtn.addEventListener('click', ()=>{ resetUI(); loadDefaultCSV(); });
+
+    applyRangeBtn.addEventListener('click', ()=>{
+      applyDateFilter();
+      rerenderAfterFilter();
+    });
+    clearRangeBtn.addEventListener('click', ()=>{
+      if(minDate&&maxDate){ setDateInputs(minDate,maxDate); }
+      applyDateFilter();
+      rerenderAfterFilter();
+    });
+
+    function resetUI(){
+      headers=[]; rawData=[]; filtered=[]; last=null; chosenA=chosenB=''; minDate=maxDate=null;
+      colA.innerHTML=''; colB.innerHTML=''; btnConfig.disabled=true; downloadPngBtn.disabled=true;
+      output.innerHTML='<div class="empty">Menunggu data…</div>';
+      stats.innerHTML='';
+      fileInfo.innerHTML='Memuat <b>data/all.csv</b>…';
+      rangeWrap.hidden=true; rangeInfo.textContent='';
+      dateStart.value=''; dateEnd.value='';
+      hideModal();
+    }
+
+    function parseAnyDate(v){
+      if(v==null) return null;
+      if(typeof v==='number'){ // epoch ms / sec heuristik
+        if(v>1e12) return new Date(v); // ms
+        if(v>1e9) return new Date(v*1000); // sec
+        return null;
+      }
+      const s=String(v).trim(); if(!s) return null;
+      // ISO atau format umum yang didukung Date
+      const t = Date.parse(s);
+      if(!isNaN(t)) return new Date(t);
+      // Coba format DD/MM/YYYY HH:MM (opsional)
+      const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+      if(m){
+        let [_,D,M,Y,hh,mm,ss]=m; D=+D; M=+M-1; Y=+Y; if(Y<100) Y+=2000; hh=+(hh||'0'); mm=+(mm||'0'); ss=+(ss||'0');
+        return new Date(Y,M,D,hh,mm,ss);
+      }
+      return null;
+    }
+
+    function toDateInputValue(d){ if(!d) return ''; const y=d.getFullYear(); const m=String(d.getMonth()+1).padStart(2,'0'); const day=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${day}`; }
+    function fromDateInputValue(s){ if(!s) return null; const [y,m,d]=s.split('-').map(Number); return new Date(y,(m-1),d,23,59,59,999); }
+    function fromDateInputStart(s){ if(!s) return null; const [y,m,d]=s.split('-').map(Number); return new Date(y,(m-1),d,0,0,0,0); }
+
+    function setDateInputs(minD,maxD){ dateStart.value = toDateInputValue(minD); dateEnd.value = toDateInputValue(maxD); }
+
+    function applyDateFilter(){
+      const sMin = fromDateInputStart(dateStart.value);
+      const sMax = fromDateInputValue(dateEnd.value);
+      const hasRange = sMin && sMax;
+      if(!hasRange){ filtered = rawData.slice(); rangeInfo.textContent='(tanpa filter waktu)'; return; }
+      filtered = rawData.filter(r=>{
+        const dt = parseAnyDate(r[createdKey]);
+        if(!dt) return false;
+        return dt>=sMin && dt<=sMax;
+      });
+      rangeInfo.textContent = `${dateStart.value} → ${dateEnd.value} • ${filtered.length.toLocaleString('id-ID')} baris`;
+    }
+
+    function rerenderAfterFilter(){
+      stats.innerHTML = `<span class='badge'>Baris (terfilter): ${filtered.length.toLocaleString('id-ID')}</span>`;
+      if(last && chosenA && chosenB){
+        last = { ...computeCross(filtered, chosenA, chosenB), aKey:chosenA, bKey:chosenB };
+        renderTable();
+      }
+    }
+
+    // ====== AUTOLOAD data/all.csv ======
+    async function loadDefaultCSV(){
+      const url = 'data/all.csv';
+      try{
+        fileInfo.innerHTML = 'Memuat <b>'+escapeHtml(url)+'</b>…';
+        Papa.parse(url, {
+          download: true,
+          header: true,
+          skipEmptyLines: 'greedy',
+          dynamicTyping: false,
+          complete: (res) => {
+            const data = res.data || [];
+            const meta = res.meta || {};
+            headers = meta.fields || (data.length ? Object.keys(data[0]) : []);
+            rawData = data;
+            if(!headers.length){ output.innerHTML = '<div class="empty">Gagal membaca header CSV. Pastikan baris pertama berisi nama kolom.</div>'; return; }
+
+            // Siapkan kolom pilihan
+            const opts=['<option value="" disabled selected>— pilih kolom —</option>'].concat(headers.map(h=>`<option value="${escapeHtml(h)}">${escapeHtml(h)}</option>`));
+            colA.innerHTML=opts.join(''); colB.innerHTML=opts.join('');
+            colA.disabled=false; colB.disabled=false; btnConfig.disabled=false;
+
+            // Hitung batas tanggal dari kolom created_at
+            createdKey = headers.includes('created_at') ? 'created_at' : headers.find(h=>/created[_\s-]?at/i.test(h)) || 'created_at';
+            const dates = [];
+            for(const r of rawData){ const dt = parseAnyDate(r[createdKey]); if(dt) dates.push(dt); }
+            if(dates.length){
+              dates.sort((a,b)=>a-b);
+              minDate = dates[0]; maxDate = dates[dates.length-1];
+              setDateInputs(minDate,maxDate);
+              applyDateFilter();
+              rangeWrap.hidden=false;
+            }else{
+              filtered = rawData.slice();
+              rangeWrap.hidden=false; // tetap tampilkan agar user bisa input manual
+              rangeInfo.textContent='(kolom created_at tidak terdeteksi valid; menampilkan semua baris)';
+            }
+
+            stats.innerHTML = `<span class="badge">Baris (total): ${rawData.length.toLocaleString('id-ID')}</span>`;
+            fileInfo.innerHTML = `<span>Memuat selesai: <b>${escapeHtml(url)}</b></span>`;
+            document.dispatchEvent(new CustomEvent('dv:data-ready', { detail:{ rows:rawData.length, headers } }));
+            showModal();
+          },
+          error: (err) => { output.innerHTML = `<div class="empty" style="color:var(--danger)">Error parsing: ${escapeHtml(err.message||String(err))}</div>` }
+        });
+      }catch(e){ output.innerHTML = `<div class="empty" style="color:var(--danger)">Gagal memuat ${escapeHtml(url)}. Periksa apakah file tersedia dan domain sama (Same-Origin).</div>`; }
+    }
+
+    // ====== Konfigurasi Persilangan ======
+    $('#apply').addEventListener('click', ()=>{
+      const aKey = colA.value; const bKey = colB.value;
+      if(!aKey || !bKey){ alert('Pilih dua kolom terlebih dahulu.'); return; }
+      chosenA=aKey; chosenB=bKey;
+      last = { ...computeCross(filtered.length?filtered:rawData, aKey, bKey), aKey, bKey };
+      renderTable();
+      downloadPngBtn.disabled=false;
+      const { rows, cols, grandTotal } = last;
+      stats.innerHTML = `
+        <span class='badge'>Kolom A: ${escapeHtml(aKey)}</span>
+        <span class='badge'>Kolom B: ${escapeHtml(bKey)}</span>
+        <span class='badge'>Kategori A: ${rows.length}</span>
+        <span class='badge'>Kategori B: ${cols.length}</span>
+        <span class='badge'>Total hitung: ${grandTotal.toLocaleString('id-ID')}</span>`;
+      hideModal();
+    });
+
+    ;[toggleHeat,togglePctRow,togglePctCol].forEach(cb=>cb.addEventListener('change',()=>{ if(last) renderTable(); }));
+
+    // ====== Download PNG ======
+    downloadPngBtn.addEventListener('click', async ()=>{
+      const node = output; if(!node) return; const oldScroll=node.scrollLeft; node.scrollLeft=0;
+      const canvas = await html2canvas(node, {scale:2, backgroundColor:'#ffffff', useCORS:true});
+      node.scrollLeft=oldScroll; canvas.toBlob((blob)=>{ if(!blob) return; const a=document.createElement('a'); a.href=URL.createObjectURL(blob); const nmA=slug(chosenA||'A'); const nmB=slug(chosenB||'B'); a.download=`persilangan_${nmA}_x_${nmB}.png`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }, 'image/png');
+    });
+
+    function computeCross(data,aKey,bKey){
+      const norm=s=>{ if(s==null) return ''; return String(s).trim().toLowerCase(); };
+      const validVal=v=>v!=='' && v!=='null' && v!=='undefined';
+      const parseAuto=s=>{ if(s==null) return ['']; const raw=String(s).trim(); if(raw==='') return ['']; if((raw.startsWith('[')&&raw.endsWith(']'))||(raw.startsWith('{')&&raw.endsWith('}'))){ try{ const arr=JSON.parse(raw); if(Array.isArray(arr)) return arr.map(x=>norm(x)).filter(validVal);}catch(e){} } if(/[;,|]/.test(raw)){ return raw.split(/\s*[;,|]\s*/).map(x=>norm(x)).filter(validVal);} return [norm(raw)].filter(validVal); };
+
+      const table=new Map(); const rowSet=new Set(); const colSet=new Set(); let grandTotal=0; let globalMax=0;
+      for(const row of data){ const aVals=[...new Set(parseAuto(row[aKey]))]; const bVals=[...new Set(parseAuto(row[bKey]))]; if(!aVals.length||!bVals.length) continue; for(const a of aVals){ rowSet.add(a); for(const b of bVals){ colSet.add(b); if(!table.has(a)) table.set(a,new Map()); const inner=table.get(a); inner.set(b,(inner.get(b)||0)+1); grandTotal++; }} }
+      const rows=[...rowSet].sort(localeSmart); const cols=[...colSet].sort(localeSmart);
+      const totals={row:{}, col:{}};
+      for(const r of rows){ let rsum=0; if(!table.has(r)) table.set(r,new Map()); const inner=table.get(r); for(const c of cols){ const v=inner.get(c)||0; rsum+=v; globalMax=Math.max(globalMax,v); inner.set(c,v); totals.col[c]=(totals.col[c]||0)+v; } totals.row[r]=rsum; }
+      return { table, rows, cols, totals, grandTotal, globalMax };
+    }
+
+    function renderTable(){
+      const { table, rows, cols, totals, aKey, bKey, grandTotal, globalMax } = last || {};
+      if(!rows || !cols || !rows.length || !cols.length){ output.innerHTML = '<div class="empty">Tidak ada kategori yang terdeteksi pada rentang waktu ini.</div>'; return; }
+      let html='<table><thead><tr>';
+      html+=`<th>${escapeHtml(aKey)} \\ ${escapeHtml(bKey)}</th>`;
+      for(const c of cols){ html+=`<th>${escapeHtml(String(c))}</th>`; }
+      html+='<th>Total Baris</th></tr></thead><tbody>';
+      for(const r of rows){ html+=`<tr><th>${escapeHtml(String(r))}</th>`; const inner=table.get(r)||new Map(); const rsum=totals.row[r]||0; for(const c of cols){ const v=inner.get(c)||0; const colTot=totals.col[c]||1; const pctRow=rsum?(v/rsum*100):0; const pctCol=colTot?(v/colTot*100):0; const bg = $('#toggleHeat').checked ? heatColor(v,globalMax) : ''; const cell=`<div style='display:flex;flex-direction:column;align-items:flex-end;gap:2px'><div style='font-variant-numeric:tabular-nums'>${v.toLocaleString('id-ID')}</div>${$('#togglePctRow').checked?`<div style='font-size:11px;color:#334155;opacity:.85'><b>R</b>: ${pctRow.toFixed(1)}%</div>`:''}${$('#togglePctCol').checked?`<div style='font-size:11px;color:#334155;opacity:.85'><b>K</b>: ${pctCol.toFixed(1)}%</div>`:''}</div>`; html+=`<td style='text-align:right;${bg}'>${cell}</td>`; } html+=`<td style='text-align:right;font-weight:600'>${rsum.toLocaleString('id-ID')}</td></tr>`; }
+      html+='</tbody><tfoot><tr><td style="font-weight:700">Total Kolom</td>';
+      for(const c of cols){ html+=`<td style='text-align:right;font-weight:700'>${(totals.col[c]||0).toLocaleString('id-ID')}</td>`; }
+      html+=`<td style='text-align:right;font-weight:700'>${grandTotal.toLocaleString('id-ID')}</td></tr></tfoot></table>`;
+      output.innerHTML=html;
+    }
+
+    function heatColor(v,max){ if(max<=0) return ''; const t=v/max; const light=98-(38*t); const sat=90; return `background: hsl(214 ${sat}% ${light}%);`; }
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;", ">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+    function slug(s){ return String(s).toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,''); }
+    function localeSmart(a,b){ return String(a).localeCompare(String(b),'id',{numeric:true,sensitivity:'base'}); }
+
+    // Mulai
+    loadDefaultCSV();
+  })();
+  </script>
+</body>
+</html>
