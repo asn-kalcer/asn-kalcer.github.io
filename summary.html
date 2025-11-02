@@ -111,14 +111,13 @@
     /* Collapsed: sembunyikan label, center ikon */
     .app-shell.collapsed .sb-title,.app-shell.collapsed .sb-label,.app-shell.collapsed .sb-help{display:none}
     .app-shell.collapsed .sb-head{justify-content:center}
-    .app-main{padding:20px}
     /* Optional: konten kartu di halaman */
     .app-card{background:#fff;border:1px solid var(--sb-border);border-radius:16px;box-shadow:var(--sb-shadow);padding:16px}
   </style>
 
 <style>
     *{box-sizing:border-box}body{margin:0;font-family:'Inter',sans-serif;background:#f9fafb;color:#222}
-    .app-main{padding:1.5rem 2rem;max-width:980px;margin:auto}
+    .app-main{padding:1.5rem 2rem;max-width:1280px;margin:auto}
     h1{font-size:1.8rem;margin-bottom:.5rem;color:#1e293b}
     h2{font-size:1.2rem;margin-top:1.5rem;color:#334155;border-bottom:2px solid #e2e8f0;padding-bottom:.25rem}
     p{line-height:1.6;margin:.3rem 0}
@@ -246,10 +245,10 @@
 }
 .card-actions{display:flex;gap:8px}
 .btn-ghost{
-  border:1px solid #e5e7eb;background:#fff;border-radius:.55rem;
+  border:1px solid #e5e7eb;background:#42d3ff;border-radius:.55rem;
   padding:.35rem .6rem;cursor:pointer;font-size:.86rem;color:#0f172a
 }
-.btn-ghost:hover{background:#f3f4f6}
+.btn-ghost:hover{background:#9dbeff}
 
 /* Small text */
 .small{font-size:.82rem;color:#475569}
@@ -262,6 +261,20 @@
   border:1px solid #e5e7eb;border-radius:.55rem;padding:.45rem .6rem;font:inherit;min-width:220px
 }
 
+.flex-row{display:flex;align-items:center;gap:12px;margin-top:.5rem}
+.btn-link{
+  background:transparent;border:none;color:#1d4ed8;font-weight:600;
+  padding:0;cursor:pointer;border-radius:6px;
+}
+.btn-link:hover{color:#1e40af;text-decoration:underline}
+.chart-wrap{ margin-top:.75rem }
+
+  </style>
+
+<style>
+  /* tombol kecil */
+  .btn-ghost.sm{ padding:.25rem .5rem; font-size:.8rem }
+  #narasiList li{ margin:.4rem 0; display:flex; align-items:center; gap:.6rem; flex-wrap:wrap }
   </style>
 </head>
 <body>
@@ -290,12 +303,13 @@
         <section class="card">
           <h2>Statistik Umum</h2>
           <div class="stat-grid">
-            <div class="stat"><div class="num">174</div><div>Total Tweet</div></div>
-            <div class="stat"><div class="num">97</div><div>Komentar</div></div>
-            <div class="stat"><div class="num">40</div><div>Tweet Asli</div></div>
-            <div class="stat"><div class="num">37</div><div>Retweet</div></div>
+            <div class="stat"><div class="num" id="totalCount">—</div><div>Total Tweet</div></div>
+            <div class="stat"><div class="num" id="komentarCount">—</div><div>Komentar</div></div>
+            <div class="stat"><div class="num" id="tweetCount">—</div><div>Tweet Asli</div></div>
+            <div class="stat"><div class="num" id="retweetCount">—</div><div>Retweet</div></div>
           </div>
         </section>
+        
 
         <section class="card">
             <div>
@@ -307,76 +321,119 @@
         </section>
 
         <section class="card">
-            <div>
-                <h2>Top Narasi / Alasan</h2>
-                <ul>
-                  <li>Keluhan sulitnya tes CPNS dibanding rekrutmen lain.</li>
-                  <li>Sindiran pusat–daerah terkait wawancara.</li>
-                  <li>Kecurigaan manipulasi nilai wawancara.</li>
-                  <li>Anggapan tes kesehatan & wawancara sebagai faktor gugur non-obyektif.</li>
-                  <li>Sindiran keras terhadap nepotisme dalam wawancara oleh pejabat lama.</li>
-                </ul>
-            </div>
+          <div>
+            <h2>Top Narasi / Alasan</h2>
+            <ul id="narasiList">
+              <li>
+                Sindiran pusat–daerah terkait wawancara.
+                <button class="btn-ghost sm open-narasi" 
+                        data-title="Sindiran pusat–daerah terkait wawancara"
+                        data-keywords="sindiran pusat;pusat daerah;wawancara">
+                  Lihat Tweet
+                </button>
+              </li>
+              <li>
+                Kecurigaan manipulasi nilai wawancara.
+                <button class="btn-ghost sm open-narasi" 
+                        data-title="Kecurigaan manipulasi nilai wawancara"
+                        data-keywords="manipulasi nilai;nilai wawancara dimanipulasi;rekayasa nilai wawancara">
+                  Lihat Tweet
+                </button>
+              </li>
+              <li>
+                Anggapan tes kesehatan & wawancara sebagai faktor gugur non-obyektif.
+                <button class="btn-ghost sm open-narasi" 
+                        data-title="Tes kesehatan & wawancara jadi faktor gugur non-obyektif"
+                        data-keywords="tes kesehatan;faktor gugur;non obyektif;non-obyektif;wawancara tidak obyektif">
+                  Lihat Tweet
+                </button>
+              </li>
+              <li>
+                Sindiran keras terhadap nepotisme dalam wawancara oleh pejabat lama.
+                <button class="btn-ghost sm open-narasi" 
+                        data-title="Sindiran nepotisme dalam wawancara oleh pejabat lama"
+                        data-keywords="nepotisme;pejabat lama;wawancara nepotistik;ordal">
+                  Lihat Tweet
+                </button>
+              </li>
+
+              <li>
+                Keluhan sulitnya tes CPNS dibanding rekrutmen lain.
+                <button class="btn-ghost sm open-narasi" 
+                        data-title="Keluhan sulitnya tes CPNS dibanding rekrutmen lain"
+                        data-keywords="keluhan sulitnya tes;tes cpns sulit;dibanding rekrutmen lain">
+                  Lihat Tweet
+                </button>
+              </li>
+
+            </ul>
+          </div>
         </section>
+        
 
         <section class="card">
             <div>
 
                 <h2>Semua Data</h2>
-                <p>Klik tombol untuk menampilkan seluruh baris data sebagai kartu dari <code>data/negative_only.csv</code>.</p>
+                <p>Klik tombol untuk menampilkan seluruh baris data sebagai kartu dari <code>data/all.csv</code>.</p>
                 <button id="openCardModal" class="btn-primary">Lihat Semua Data</button>
                 <div class="note">Kartu akan dimuat saat popup dibuka.</div>
             </div>
         </section>
 
         <section class="card">
-            <div>
-                <h2>Aspek yang Paling Sering Dibahas</h2>
-                <table>
-                  <tr><th>Aspek</th><th>Jumlah Tweet</th></tr>
-                  <tr><td>Wawancara</td><td>20</td></tr>
-                  <tr><td>Subjektivitas Penilaian</td><td>14</td></tr>
-                  <tr><td>Nepotisme</td><td>8</td></tr>
-                  <tr><td>Nilai & Transparansi</td><td>8</td></tr>
-                  <tr><td>SKB & Kegagalan</td><td>6–7</td></tr>
-                </table>
-                <div class="note">Sorotan utama adalah wawancara yang dianggap subjektif, nepotistik, dan tidak transparan.</div>
+          <div>
+            <h2>Aspek yang Paling Sering Dibahas</h2>
+            <table id="aspekTable">
+              <tr><th>Aspek</th><th>Jumlah Tweet</th></tr>
+              <!-- rows injected by JS -->
+            </table>
+            <!-- canvas chart -->
+            
+            <div class="flex-row">
+              <button id="toggleAspek" class="btn-link" data-expanded="false">Lihat semua</button>
+              <span class="note" id="aspekNote">Sorotan utama akan dihitung otomatis dari data.</span>
             </div>
+          </div>
+          <div class="chart-wrap"><canvas id="aspekChart" height="220"></canvas></div>
         </section>
-
-  
+        
         <section class="card">
-            <div>
-                <h2>Distribusi Emosi</h2>
-                <p>Emosi dominan yang muncul dari 174 tweet negatif terkait seleksi CPNS.</p>
-                <table>
-                  <tr><th>Emosi</th><th>Jumlah</th></tr>
-                  <tr><td>Kritik</td><td>49</td></tr>
-                  <tr><td>Kecewa</td><td>37</td></tr>
-                  <tr><td>Sedih</td><td>14</td></tr>
-                  <tr><td>Waspada</td><td>10</td></tr>
-                  <tr><td>Lelah</td><td>8</td></tr>
-                  <tr><td>Marah</td><td>7</td></tr>
-                  <tr><td>Lainnya (frustrasi, sinis, sarkas, dll)</td><td>~49</td></tr>
-                </table>
-                <div class="note">Nada umum: kritik, kekecewaan, dan rasa frustrasi terhadap proses seleksi.</div>
+          <div>
+            <h2>Distribusi Emosi</h2>
+            <p id="emosiLead">Emosi dominan yang muncul dari <b id="totalTweets">…</b> tweet terkait seleksi CPNS.</p>
+            <table id="emosiTable">
+              <tr><th>Emosi</th><th>Jumlah</th></tr>
+              <!-- rows injected by JS -->
+            </table>
+            <!-- canvas chart -->
+            
+            <div class="flex-row">
+              <button id="toggleEmosi" class="btn-link" data-expanded="false">Lihat semua</button>
+              <span class="note">Nada umum dihitung dari distribusi emosi pada dataset.</span>
             </div>
+          </div>
+          <div class="chart-wrap"><canvas id="emosiChart" height="220"></canvas></div>
         </section>
-  
+        
         <section class="card">
-            <div>
-                <h2>Distribusi Intensi</h2>
-                <table>
-                  <tr><th>Intensi</th><th>Jumlah</th></tr>
-                  <tr><td>Kritik</td><td>71</td></tr>
-                  <tr><td>Cerita pribadi</td><td>30</td></tr>
-                  <tr><td>Curhat</td><td>19</td></tr>
-                  <tr><td>Opini</td><td>15</td></tr>
-                  <tr><td>Saran / keluhan / usulan</td><td>16</td></tr>
-                </table>
-                <div class="note">Mayoritas tweet berisi kritik dan pengalaman pribadi yang menyoroti proses CPNS.</div>
+          <div>
+            <h2>Distribusi Intensi</h2>
+            <table id="intensiTable">
+              <tr><th>Intensi</th><th>Jumlah</th></tr>
+              <!-- rows injected by JS -->
+            </table>
+            <!-- canvas chart -->
+            
+            <div class="flex-row">
+              <button id="toggleIntensi" class="btn-link" data-expanded="false">Lihat semua</button>
+              <span class="note">Mayoritas pola intensi akan ter-update sesuai data terbaru.</span>
             </div>
+          </div>
+          <div class="chart-wrap"><canvas id="intensiChart" height="220"></canvas></div>
         </section>
+        
+        
   
         
       </main>
@@ -387,7 +444,7 @@
 <div id="dataCardModal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal" role="document">
       <div class="modal-head">
-        <h3>Semua Data (negative_only.csv)</h3>
+        <h3>Semua Data (all.csv)</h3>
         <button class="modal-close" id="closeCardModal" aria-label="Tutup">Tutup ✕</button>
       </div>
       <div class="modal-body">
@@ -403,6 +460,30 @@
     </div>
   </div>
   
+
+  <div id="narasiModal" class="modal-backdrop" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal" role="document">
+      <div class="modal-head">
+        <h3 id="narasiModalTitle">Tweet Relevan</h3>
+        <button class="modal-close" id="closeNarasiModal" aria-label="Tutup">Tutup ✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="toolbar">
+          <input id="narasiSearch" class="input" type="search" placeholder="Cari di hasil (user/teks/emosi/aspek)…" />
+          <span id="narasiInfo" class="small">Memuat…</span>
+        </div>
+        <div id="narasiCards" class="cards-grid" aria-live="polite" aria-busy="true"></div>
+      </div>
+      <div class="modal-actions">
+        <button class="modal-close" id="closeNarasiModal2">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+
   <script>
   /** ===== Modal open/close ===== */
   const cardModal = document.getElementById('dataCardModal');
@@ -436,7 +517,7 @@
   /** ===== CSV fetch + parsing (auto delimiter) ===== */
   async function loadAndRenderCSVasCards(){
     try{
-      const res = await fetch('data/negative_only.csv', {cache:'no-store'});
+      const res = await fetch('data/all.csv', {cache:'no-store'});
       if(!res.ok) throw new Error('Gagal memuat CSV: ' + res.status);
       const text = await res.text();
   
@@ -449,7 +530,7 @@
       VIEW_ROWS = rows.slice(1);
   
       renderCards(VIEW_ROWS);
-      rowsInfo.textContent = `Sumber: data/negative_only.csv — Total baris: ${VIEW_ROWS.length.toLocaleString('id-ID')}`;
+      rowsInfo.textContent = `Sumber: data/all.csv — Total baris: ${VIEW_ROWS.length.toLocaleString('id-ID')}`;
       rowsInfo.classList.remove('small');
       cardModal.dataset.loaded = '1';
       cardsGrid.setAttribute('aria-busy','false');
@@ -693,7 +774,7 @@
   /** ===== Quick search (filter lokal di modal) ===== */
   searchInput?.addEventListener('input', ()=>{
     const q = searchInput.value.trim().toLowerCase();
-    if(!q){ renderCards(VIEW_ROWS); rowsInfo.textContent = `Sumber: data/negative_only.csv — Total baris: ${VIEW_ROWS.length.toLocaleString('id-ID')}`; return; }
+    if(!q){ renderCards(VIEW_ROWS); rowsInfo.textContent = `Sumber: data/all.csv — Total baris: ${VIEW_ROWS.length.toLocaleString('id-ID')}`; return; }
     const H = indexHeaders(HEADERS);
     const fields = ['user_screen_name','text','parent_tweet_text','emosi','intensi','aspek','alasan','sentimen','kind'];
     const filtered = VIEW_ROWS.filter(r=>{
@@ -703,7 +784,7 @@
       });
     });
     renderCards(filtered);
-    rowsInfo.textContent = `Sumber: data/negative_only.csv — Ditemukan: ${filtered.length.toLocaleString('id-ID')} / ${VIEW_ROWS.length.toLocaleString('id-ID')}`;
+    rowsInfo.textContent = `Sumber: data/all.csv — Ditemukan: ${filtered.length.toLocaleString('id-ID')} / ${VIEW_ROWS.length.toLocaleString('id-ID')}`;
   });
   </script>
   
@@ -728,7 +809,778 @@
       applySBState();
     </script>
 
+<script>
+  (function(){
+    const CSV_URL = 'data/all.csv';
+    const LIMIT_DEFAULT = 10;
+  
+    // ====== Utility: detect delimiter & parse (quoted-safe)
+    function detectDelimiterDyn(text){
+      const firstLine = text.split(/\r?\n/)[0] || '';
+      const comma = (firstLine.match(/,/g)||[]).length;
+      const tab   = (firstLine.match(/\t/g)||[]).length;
+      return tab > comma ? '\t' : ',';
+    }
+    function parseCSVDyn(text, delimiter=','){
+      const rows = [];
+      let field = '', row = [], inQuotes = false, i = 0;
+      for(; i < text.length; i++){
+        const ch = text[i], next = text[i+1];
+        if(inQuotes){
+          if(ch === '"'){ if(next === '"'){ field += '"'; i++; } else { inQuotes = false; } }
+          else field += ch;
+        } else {
+          if(ch === '"'){ inQuotes = true; }
+          else if(ch === delimiter){ row.push(field); field=''; }
+          else if(ch === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+          else if(ch === '\r'){ /* ignore */ }
+          else field += ch;
+        }
+      }
+      if(field.length || row.length){ row.push(field); rows.push(row); }
+      while(rows.length && rows[rows.length-1].every(c=>c==='')) rows.pop();
+      return rows;
+    }
+  
+    function idxHeaders(headers){
+      const idx = {};
+      const map = {
+        kind:'kind',
+        tweet_id:'tweet_id',
+        parent_tweet_id:'parent_tweet_id',
+        parent_tweet_text:'parent_tweet_text',
+        created_at:'created_at',
+        user_id:'user_id',
+        user_screen_name:'user_screen_name',
+        text:'text',
+        in_reply_to_id:'in_reply_to_id',
+        retweet_count:'retweet_count',
+        favorite_count:'favorite_count',
+        relevan:'relevan',
+        sentimen:'sentimen',
+        emosi:'emosi',
+        intensi:'intensi',
+        aspek:'aspek',
+        alasan:'alasan'
+      };
+      headers.forEach((h,i)=>{
+        const key = String(h||'').trim().toLowerCase().replace(/\s+/g,'_');
+        if(map[key]) idx[map[key]] = i;
+      });
+      Object.keys(map).forEach(k=>{ if(idx[k]===undefined) idx[k]=-1; });
+      return idx;
+    }
+  
+    function countBy(rows, colIndex){
+      const m = new Map();
+      for(const r of rows){
+        const val = (r[colIndex] || '').toString().trim();
+        if(!val) continue;
+        m.set(val, (m.get(val)||0) + 1);
+      }
+      return Array.from(m.entries()).sort((a,b)=> b[1]-a[1]);
+    }
+  
+    function injectRows(tableEl, pairs){
+      const header = tableEl.querySelector('tr');
+      tableEl.innerHTML = '';
+      tableEl.appendChild(header);
+      const frag = document.createDocumentFragment();
+      for(const [label, count] of pairs){
+        const tr = document.createElement('tr');
+        const td1 = document.createElement('td');
+        const td2 = document.createElement('td');
+        td1.textContent = label;
+        td2.textContent = count.toLocaleString('id-ID');
+        tr.append(td1, td2);
+        frag.appendChild(tr);
+      }
+      tableEl.appendChild(frag);
+    }
+  
+    function summarizeTopAspek(pairs){
+      if(!pairs.length) return 'Tidak ada aspek dominan.';
+      const top = pairs.slice(0,3).map(p=>p[0]);
+      return `Sorotan utama: ${top.join(', ')}.`;
+    }
+  
+    // ====== Render with toggle (per section) ======
+    function mountTableWithToggle({tableEl, toggleBtn, pairs, limit=LIMIT_DEFAULT}){
+      if(!tableEl || !toggleBtn) return;
+  
+      const render = ()=>{
+        const expanded = toggleBtn.getAttribute('data-expanded') === 'true';
+        const slice = expanded ? pairs : pairs.slice(0, limit);
+        injectRows(tableEl, slice);
+        toggleBtn.textContent = expanded ? 'Tutup' : `Lihat semua (${pairs.length.toLocaleString('id-ID')})`;
+      };
+  
+      toggleBtn.addEventListener('click', ()=>{
+        const current = toggleBtn.getAttribute('data-expanded') === 'true';
+        toggleBtn.setAttribute('data-expanded', (!current).toString());
+        render();
+      });
+  
+      render(); // first render
+    }
+  
+    async function main(){
+      try{
+        const res = await fetch(CSV_URL, {cache:'no-store'});
+        if(!res.ok) throw new Error('Gagal memuat CSV: ' + res.status);
+        const text = await res.text();
+        const delim = detectDelimiterDyn(text);
+        const rows = parseCSVDyn(text, delim);
+        if(!rows.length) throw new Error('CSV kosong');
+  
+        const headers = rows[0];
+        const data = rows.slice(1);
+        const H = idxHeaders(headers);
+  
+        const aspekPairs   = H.aspek   >= 0 ? countBy(data, H.aspek)   : [];
+        const emosiPairs   = H.emosi   >= 0 ? countBy(data, H.emosi)   : [];
+        const intensiPairs = H.intensi >= 0 ? countBy(data, H.intensi) : [];
+  
+        // mount Aspek
+        mountTableWithToggle({
+          tableEl: document.getElementById('aspekTable'),
+          toggleBtn: document.getElementById('toggleAspek'),
+          pairs: aspekPairs,
+          limit: LIMIT_DEFAULT
+        });
+  
+        // mount Emosi
+        mountTableWithToggle({
+          tableEl: document.getElementById('emosiTable'),
+          toggleBtn: document.getElementById('toggleEmosi'),
+          pairs: emosiPairs,
+          limit: LIMIT_DEFAULT
+        });
+  
+        // mount Intensi
+        mountTableWithToggle({
+          tableEl: document.getElementById('intensiTable'),
+          toggleBtn: document.getElementById('toggleIntensi'),
+          pairs: intensiPairs,
+          limit: LIMIT_DEFAULT
+        });
+  
+        // Update total tweet
+        const total = data.length;
+        const totalTweetsEl = document.getElementById('totalTweets');
+        if(totalTweetsEl) totalTweetsEl.textContent = total.toLocaleString('id-ID');
+  
+        // Update catatan aspek otomatis
+        const aspekNote = document.getElementById('aspekNote');
+        if(aspekNote) aspekNote.textContent = summarizeTopAspek(aspekPairs);
 
+        const totalEl    = document.getElementById('totalCount');
+        const komentarEl = document.getElementById('komentarCount');
+        const tweetEl    = document.getElementById('tweetCount');
+        const retweetEl  = document.getElementById('retweetCount');
+
+        // hitung frekuensi kind (case-insensitive + trimming)
+        const kindMap = { commentar: 0, tweet: 0, retweet: 0 };
+        if (H.kind >= 0) {
+          for (const r of data) {
+            const k = String(r[H.kind] || '').trim().toLowerCase();
+            if (k in kindMap) kindMap[k] += 1;
+          }
+        }
+
+        // render angka (fallback "—" jika elemen tidak ada)
+        if (totalEl)    totalEl.textContent    = total.toLocaleString('id-ID');
+        if (komentarEl) komentarEl.textContent = (kindMap.commentar || 0).toLocaleString('id-ID');
+        if (tweetEl)    tweetEl.textContent    = (kindMap.tweet || 0).toLocaleString('id-ID');
+        if (retweetEl)  retweetEl.textContent  = (kindMap.retweet || 0).toLocaleString('id-ID');
+  
+      }catch(err){
+        console.error(err);
+        const fail = '<tr><td colspan="2">Gagal memuat data.</td></tr>';
+        ['aspekTable','emosiTable','intensiTable'].forEach(id=>{
+          const el = document.getElementById(id);
+          if(el) el.insertAdjacentHTML('beforeend', fail);
+        });
+        const t = document.getElementById('totalTweets'); if(t) t.textContent = '—';
+        const n = document.getElementById('aspekNote'); if(n) n.textContent = 'Gagal menghitung aspek.';
+        ['toggleAspek','toggleEmosi','toggleIntensi'].forEach(id=>{
+          const b = document.getElementById(id);
+          if(b){ b.disabled = true; b.textContent = 'Tidak tersedia'; }
+        });
+      }
+    }
+  
+    if(document.readyState === 'loading'){
+      document.addEventListener('DOMContentLoaded', main);
+    }else{
+      main();
+    }
+  })();
+  </script>
+
+
+<script>
+(function(){
+  const CSV_URL = 'data/all.csv';
+  const LIMIT_DEFAULT = 10;
+  const THRESHOLD = 10; // hanya kategori dengan jumlah >= 10 yang ditampilkan di grafik
+
+  // ====== Utility CSV ======
+  function detectDelimiterDyn(text){
+    const firstLine = text.split(/\r?\n/)[0] || '';
+    const comma = (firstLine.match(/,/g)||[]).length;
+    const tab   = (firstLine.match(/\t/g)||[]).length;
+    return tab > comma ? '\t' : ',';
+  }
+  function parseCSVDyn(text, delimiter=','){
+    const rows = [];
+    let field = '', row = [], inQuotes = false, i = 0;
+    for(; i < text.length; i++){
+      const ch = text[i], next = text[i+1];
+      if(inQuotes){
+        if(ch === '"'){ if(next === '"'){ field += '"'; i++; } else { inQuotes = false; } }
+        else field += ch;
+      } else {
+        if(ch === '"'){ inQuotes = true; }
+        else if(ch === delimiter){ row.push(field); field=''; }
+        else if(ch === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+        else if(ch === '\r'){ /* ignore */ }
+        else field += ch;
+      }
+    }
+    if(field.length || row.length){ row.push(field); rows.push(row); }
+    while(rows.length && rows[rows.length-1].every(c=>c==='')) rows.pop();
+    return rows;
+  }
+  function idxHeaders(headers){
+    const idx = {};
+    const map = {
+      kind:'kind', tweet_id:'tweet_id', parent_tweet_id:'parent_tweet_id',
+      parent_tweet_text:'parent_tweet_text', created_at:'created_at',
+      user_id:'user_id', user_screen_name:'user_screen_name', text:'text',
+      in_reply_to_id:'in_reply_to_id', retweet_count:'retweet_count',
+      favorite_count:'favorite_count', relevan:'relevan', sentimen:'sentimen',
+      emosi:'emosi', intensi:'intensi', aspek:'aspek', alasan:'alasan'
+    };
+    headers.forEach((h,i)=>{
+      const key = String(h||'').trim().toLowerCase().replace(/\s+/g,'_');
+      if(map[key]) idx[map[key]] = i;
+    });
+    Object.keys(map).forEach(k=>{ if(idx[k]===undefined) idx[k]=-1; });
+    return idx;
+  }
+  function countBy(rows, colIndex){
+    const m = new Map();
+    for(const r of rows){
+      const val = (r[colIndex] || '').toString().trim();
+      if(!val) continue;
+      m.set(val, (m.get(val)||0) + 1);
+    }
+    return Array.from(m.entries()).sort((a,b)=> b[1]-a[1]);
+  }
+
+  // ====== Table helpers (sudah ada sebelumnya, tetap dipakai) ======
+  function injectRows(tableEl, pairs){
+    const header = tableEl.querySelector('tr');
+    tableEl.innerHTML = '';
+    tableEl.appendChild(header);
+    const frag = document.createDocumentFragment();
+    for(const [label, count] of pairs){
+      const tr = document.createElement('tr');
+      const td1 = document.createElement('td');
+      const td2 = document.createElement('td');
+      td1.textContent = label;
+      td2.textContent = count.toLocaleString('id-ID');
+      tr.append(td1, td2);
+      frag.appendChild(tr);
+    }
+    tableEl.appendChild(frag);
+  }
+  function summarizeTopAspek(pairs){
+    if(!pairs.length) return 'Tidak ada aspek dominan.';
+    const top = pairs.slice(0,3).map(p=>p[0]);
+    return `Sorotan utama: ${top.join(', ')}.`;
+  }
+  function mountTableWithToggle({tableEl, toggleBtn, pairs, limit=LIMIT_DEFAULT}){
+    if(!tableEl || !toggleBtn) return;
+    const render = ()=>{
+      const expanded = toggleBtn.getAttribute('data-expanded') === 'true';
+      const slice = expanded ? pairs : pairs.slice(0, limit);
+      injectRows(tableEl, slice);
+      toggleBtn.textContent = expanded ? 'Tutup' : `Lihat semua (${pairs.length.toLocaleString('id-ID')})`;
+    };
+    toggleBtn.addEventListener('click', ()=>{
+      const current = toggleBtn.getAttribute('data-expanded') === 'true';
+      toggleBtn.setAttribute('data-expanded', (!current).toString());
+      render();
+    });
+    render();
+  }
+
+  // ====== Chart helpers ======
+  const charts = {}; // simpan instance supaya bisa di-destroy kalau perlu
+  function toChartData(pairs){
+    const filtered = pairs.filter(([,count]) => count >= THRESHOLD);
+    return {
+      labels: filtered.map(p=>p[0]),
+      data:   filtered.map(p=>p[1])
+    };
+  }
+  function makeBarChart(canvasId, labels, data, title){
+    const ctx = document.getElementById(canvasId);
+    if(!ctx) return;
+    if(charts[canvasId]){ charts[canvasId].destroy(); }
+    charts[canvasId] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{
+          label: title,
+          data,
+          // warna default Chart.js (biarkan auto); barThickness agar rapi:
+          borderWidth: 1
+        }]
+      },
+      options: {
+        indexAxis: 'y', // horizontal bar
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx)=> ` ${ctx.parsed.x.toLocaleString('id-ID')}`
+            }
+          },
+          title: { display: false }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { precision:0 }
+          },
+          y: {
+            ticks: { autoSkip:false, maxTicksLimit: 20 }
+          }
+        }
+      }
+    });
+  }
+  function renderAllCharts({aspekPairs, emosiPairs, intensiPairs}){
+    const aspek = toChartData(aspekPairs);
+    const emosi = toChartData(emosiPairs);
+    const intensi = toChartData(intensiPairs);
+
+    // Jika tidak ada data >= threshold, tampilkan kecil keterangan
+    if(aspek.labels.length){
+      makeBarChart('aspekChart', aspek.labels, aspek.data, 'Aspek (≥10)');
+    }else{
+      safeNote('aspekChart', 'Tidak ada aspek dengan jumlah ≥ 10.');
+    }
+    if(emosi.labels.length){
+      makeBarChart('emosiChart', emosi.labels, emosi.data, 'Emosi (≥10)');
+    }else{
+      safeNote('emosiChart', 'Tidak ada emosi dengan jumlah ≥ 10.');
+    }
+    if(intensi.labels.length){
+      makeBarChart('intensiChart', intensi.labels, intensi.data, 'Intensi (≥10)');
+    }else{
+      safeNote('intensiChart', 'Tidak ada intensi dengan jumlah ≥ 10.');
+    }
+  }
+  function safeNote(canvasId, msg){
+    const canvas = document.getElementById(canvasId);
+    if(!canvas) return;
+    const wrap = canvas.parentElement;
+    if(wrap){
+      const div = document.createElement('div');
+      div.className = 'small';
+      div.style.marginTop = '.5rem';
+      div.textContent = msg;
+      wrap.appendChild(div);
+      canvas.style.display = 'none';
+    }
+  }
+
+  // ====== MAIN ======
+  async function main(){
+    try{
+      const res = await fetch(CSV_URL, {cache:'no-store'});
+      if(!res.ok) throw new Error('Gagal memuat CSV: ' + res.status);
+      const text = await res.text();
+      const delim = detectDelimiterDyn(text);
+      const rows = parseCSVDyn(text, delim);
+      if(!rows.length) throw new Error('CSV kosong');
+
+      const headers = rows[0];
+      const data = rows.slice(1);
+      const H = idxHeaders(headers);
+
+      // Hitung pasangan [label,count]
+      const aspekPairs   = H.aspek   >= 0 ? countBy(data, H.aspek)   : [];
+      const emosiPairs   = H.emosi   >= 0 ? countBy(data, H.emosi)   : [];
+      const intensiPairs = H.intensi >= 0 ? countBy(data, H.intensi) : [];
+
+      // Table + Toggle (tetap seperti sebelumnya)
+      mountTableWithToggle({
+        tableEl: document.getElementById('aspekTable'),
+        toggleBtn: document.getElementById('toggleAspek'),
+        pairs: aspekPairs,
+        limit: LIMIT_DEFAULT
+      });
+      mountTableWithToggle({
+        tableEl: document.getElementById('emosiTable'),
+        toggleBtn: document.getElementById('toggleEmosi'),
+        pairs: emosiPairs,
+        limit: LIMIT_DEFAULT
+      });
+      mountTableWithToggle({
+        tableEl: document.getElementById('intensiTable'),
+        toggleBtn: document.getElementById('toggleIntensi'),
+        pairs: intensiPairs,
+        limit: LIMIT_DEFAULT
+      });
+
+      // Total tweet (kalimat emosi)
+      const totalTweetsEl = document.getElementById('totalTweets');
+      if(totalTweetsEl) totalTweetsEl.textContent = data.length.toLocaleString('id-ID');
+
+      // Catatan aspek
+      const aspekNote = document.getElementById('aspekNote');
+      if(aspekNote) aspekNote.textContent = summarizeTopAspek(aspekPairs);
+
+      // Render Charts (≥ 10 saja)
+      renderAllCharts({aspekPairs, emosiPairs, intensiPairs});
+    }catch(err){
+      console.error(err);
+      ['aspekTable','emosiTable','intensiTable'].forEach(id=>{
+        const el = document.getElementById(id);
+        if(el) el.insertAdjacentHTML('beforeend', '<tr><td colspan="2">Gagal memuat data.</td></tr>');
+      });
+      const t = document.getElementById('totalTweets'); if(t) t.textContent = '—';
+      const n = document.getElementById('aspekNote'); if(n) n.textContent = 'Gagal menghitung aspek.';
+      // note di chart
+      safeNote('aspekChart','Gagal memuat grafik.');
+      safeNote('emosiChart','Gagal memuat grafik.');
+      safeNote('intensiChart','Gagal memuat grafik.');
+    }
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', main);
+  }else{
+    main();
+  }
+})();
+</script>
+
+
+<script>
+  (function(){
+    const CSV_URL_NEG = 'data/negative_only.csv';
+  
+    // cache
+    let NEG_ROWS = null, NEG_HEADERS = null, NEG_IDX = null;
+  
+    // modal elems
+    const narasiModal = document.getElementById('narasiModal');
+    const closeNarasiModal = document.getElementById('closeNarasiModal');
+    const closeNarasiModal2 = document.getElementById('closeNarasiModal2');
+    const narasiTitle = document.getElementById('narasiModalTitle');
+    const narasiCards = document.getElementById('narasiCards');
+    const narasiInfo  = document.getElementById('narasiInfo');
+    const narasiSearch = document.getElementById('narasiSearch');
+  
+    let CURRENT_RESULTS = []; // hasil filter aktif
+  
+    // ===== CSV helpers (reuse pola auto-delimiter quoted-safe) =====
+    function detectDelimiter(text){
+      const firstLine = text.split(/\r?\n/)[0] || '';
+      const comma = (firstLine.match(/,/g)||[]).length;
+      const tab   = (firstLine.match(/\t/g)||[]).length;
+      return tab > comma ? '\t' : ',';
+    }
+    function parseCSV(text, delimiter=','){
+      const rows = [];
+      let field = '', row = [], inQuotes = false, i = 0;
+      for(; i < text.length; i++){
+        const ch = text[i], next = text[i+1];
+        if(inQuotes){
+          if(ch === '"'){ if(next === '"'){ field += '"'; i++; } else { inQuotes = false; } }
+          else field += ch;
+        } else {
+          if(ch === '"'){ inQuotes = true; }
+          else if(ch === delimiter){ row.push(field); field=''; }
+          else if(ch === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+          else if(ch === '\r'){ /* ignore */ }
+          else field += ch;
+        }
+      }
+      if(field.length || row.length){ row.push(field); rows.push(row); }
+      while(rows.length && rows[rows.length-1].every(c=>c==='')) rows.pop();
+      return rows;
+    }
+    function idxHeaders(headers){
+      const idx = {};
+      const map = {
+        kind:'kind',
+        tweet_id:'tweet_id',
+        parent_tweet_id:'parent_tweet_id',
+        parent_tweet_text:'parent_tweet_text',
+        created_at:'created_at',
+        user_id:'user_id',
+        user_screen_name:'user_screen_name',
+        text:'text',
+        in_reply_to_id:'in_reply_to_id',
+        retweet_count:'retweet_count',
+        favorite_count:'favorite_count',
+        relevan:'relevan',
+        sentimen:'sentimen',
+        emosi:'emosi',
+        intensi:'intensi',
+        aspek:'aspek',
+        alasan:'alasan'
+      };
+      headers.forEach((h,i)=>{
+        const key = String(h||'').trim().toLowerCase().replace(/\s+/g,'_');
+        if(map[key]) idx[map[key]] = i;
+      });
+      Object.keys(map).forEach(k=>{ if(idx[k]===undefined) idx[k]=-1; });
+      return idx;
+    }
+  
+    // ===== UI helpers =====
+    function escapeHTML(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+    function linkify(s){
+      return s
+        .replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')
+        .replace(/(^|\s)@([a-zA-Z0-9_]{1,15})/g,'$1<a href="https://x.com/$2" target="_blank" rel="noopener">@$2</a>')
+        .replace(/(^|\s)#([a-zA-Z0-9_]+)/g,'$1<a href="https://x.com/hashtag/$2" target="_blank" rel="noopener">#$2</a>');
+    }
+    function buildXUrl(tweetId){
+      const id = String(tweetId||'').trim();
+      if(!id) return '';
+      const digits = id.match(/\d{5,}/g);
+      if(!digits) return '';
+      return `https://x.com/i/web/status/${digits.join('')}`;
+    }
+  
+    function makeCard(r){
+      const H = NEG_IDX;
+  
+      const kind = r[H.kind] || '';
+      const tweet_id = r[H.tweet_id] || '';
+      const created_at = r[H.created_at] || '';
+      const user_name = r[H.user_screen_name] || '';
+      const user_id = r[H.user_id] || '';
+      const text = r[H.text] || '';
+      const parent_text = r[H.parent_tweet_text] || '';
+      const emosi = r[H.emosi] || '';
+      const intensi = r[H.intensi] || '';
+      const aspek = r[H.aspek] || '';
+      const alasan = r[H.alasan] || '';
+      const rt = r[H.retweet_count] || '0';
+      const fav = r[H.favorite_count] || '0';
+  
+      const card = document.createElement('article');
+      card.className = 'data-card';
+  
+      const top = document.createElement('div');
+      top.className = 'card-top';
+  
+      const user = document.createElement('div');
+      user.className = 'user';
+      user.innerHTML = `
+        <div class="avatar" aria-hidden="true"></div>
+        <div>
+          <div class="user-name" title="${escapeHTML(user_name)}">@${escapeHTML(user_name)}</div>
+          <div class="user-id">ID: ${escapeHTML(user_id)}</div>
+        </div>
+      `;
+  
+      const badges = document.createElement('div');
+      badges.className = 'badges';
+      const b = (t, cls) => { const s=document.createElement('span'); s.className=`badge ${cls}`; s.textContent=t||'—'; return s; };
+      badges.append(b(kind,'kind'), b(emosi,'emosi'), b(intensi,'intensi'), b(aspek,'aspek'));
+  
+      top.append(user, badges);
+  
+      const tweet = document.createElement('div');
+      tweet.className = 'tweet';
+      tweet.innerHTML = linkify(escapeHTML(text || '(tanpa teks)'));
+  
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.innerHTML = `
+        <span class="kv"><b>Waktu:</b> ${escapeHTML(created_at||'—')}</span>
+        <span class="kv"><b>Tweet ID:</b> ${escapeHTML(tweet_id||'—')}</span>
+      `;
+  
+      let parentEl = null;
+      if(parent_text){
+        parentEl = document.createElement('div');
+        parentEl.className = 'tweet';
+        parentEl.style.borderLeft = '3px solid #e5e7eb';
+        parentEl.style.paddingLeft = '10px';
+        parentEl.style.marginTop = '8px';
+        parentEl.style.background = '#fafafa';
+        parentEl.innerHTML = `<span class="small">Parent:</span> ${linkify(escapeHTML(parent_text))}`;
+      }
+  
+      const counts = document.createElement('div');
+      counts.className = 'counts';
+      counts.innerHTML = `
+        <span class="count"><b>Retweet</b> ${escapeHTML(String(rt||'0'))}</span>
+        <span class="count"><b>Favorite</b> ${escapeHTML(String(fav||'0'))}</span>
+      `;
+  
+      const foot = document.createElement('div');
+      foot.className = 'card-foot';
+      const actions = document.createElement('div');
+      actions.className = 'card-actions';
+  
+      const xUrl = buildXUrl(tweet_id);
+      if(xUrl){
+        const a = document.createElement('a');
+        a.className = 'btn-ghost';
+        a.textContent = 'Buka di X';
+        a.href = xUrl;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        actions.appendChild(a);
+      }
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'btn-ghost';
+      copyBtn.textContent = 'Salin Teks';
+      copyBtn.addEventListener('click',()=>{
+        navigator.clipboard.writeText(text || '').then(()=>{
+          copyBtn.textContent = 'Tersalin ✓';
+          setTimeout(()=>copyBtn.textContent='Salin Teks', 1200);
+        });
+      });
+      actions.appendChild(copyBtn);
+  
+      foot.append(actions, document.createElement('div'));
+  
+      card.append(top, tweet, meta);
+      if(parentEl) card.append(parentEl);
+      card.append(counts, foot);
+  
+      // alasan (kecil) di bawah
+      if(alasan){
+        const reason = document.createElement('div');
+        reason.className = 'small';
+        reason.style.marginTop = '.4rem';
+        reason.innerHTML = `<b>Alasan:</b> ${escapeHTML(alasan)}`;
+        card.appendChild(reason);
+      }
+  
+      return card;
+    }
+  
+    function openModal(){
+      narasiModal.classList.add('show');
+      narasiModal.setAttribute('aria-hidden','false');
+    }
+    function closeModal(){
+      narasiModal.classList.remove('show');
+      narasiModal.setAttribute('aria-hidden','true');
+      narasiSearch.value = '';
+    }
+    closeNarasiModal.addEventListener('click', closeModal);
+    closeNarasiModal2.addEventListener('click', closeModal);
+    narasiModal.addEventListener('click', (e)=>{ if(e.target === narasiModal) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && narasiModal.classList.contains('show')) closeModal(); });
+  
+    async function ensureNegData(){
+      if(NEG_ROWS) return;
+      const res = await fetch(CSV_URL_NEG, {cache:'no-store'});
+      if(!res.ok) throw new Error('Gagal memuat negative_only.csv: ' + res.status);
+      const text = await res.text();
+      const delim = detectDelimiter(text);
+      const rows = parseCSV(text, delim);
+      if(!rows.length) throw new Error('CSV kosong');
+      NEG_HEADERS = rows[0];
+      NEG_ROWS = rows.slice(1);
+      NEG_IDX = idxHeaders(NEG_HEADERS);
+    }
+  
+    function filterByKeywords(rows, keywords){
+      const H = NEG_IDX;
+      const kws = keywords
+        .split(';')
+        .map(s=>s.trim().toLowerCase())
+        .filter(Boolean);
+  
+      if(!kws.length) return [];
+  
+      return rows.filter(r=>{
+        const alasan = String(r[H.alasan] || '').toLowerCase();
+        const text   = String(r[H.text] || '').toLowerCase();
+        // cocok jika salah satu keyword muncul di alasan atau text
+        return kws.some(kw => alasan.includes(kw) || text.includes(kw));
+      });
+    }
+  
+    function renderResultCards(list){
+      narasiCards.innerHTML = '';
+      const frag = document.createDocumentFragment();
+      list.forEach(r=> frag.appendChild(makeCard(r)));
+      narasiCards.appendChild(frag);
+      narasiCards.setAttribute('aria-busy','false');
+    }
+  
+    // klik pada setiap tombol narasi
+    document.querySelectorAll('.open-narasi').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        try{
+          narasiCards.setAttribute('aria-busy','true');
+          narasiCards.innerHTML = '';
+          narasiInfo.textContent = 'Memuat…';
+  
+          await ensureNegData();
+  
+          const title = btn.getAttribute('data-title') || 'Tweet Relevan';
+          const keywords = btn.getAttribute('data-keywords') || '';
+  
+          const list = filterByKeywords(NEG_ROWS, keywords);
+          CURRENT_RESULTS = list;
+  
+          narasiTitle.textContent = title;
+          narasiInfo.textContent = `Ditemukan: ${list.length.toLocaleString('id-ID')} tweet`;
+          renderResultCards(list);
+  
+          openModal();
+        }catch(err){
+          console.error(err);
+          narasiCards.innerHTML = '<div class="small">Gagal memuat data.</div>';
+          narasiInfo.textContent = 'Gagal memuat.';
+          openModal();
+        }
+      });
+    });
+  
+    // pencarian lokal di hasil modal
+    narasiSearch.addEventListener('input', ()=>{
+      const q = narasiSearch.value.trim().toLowerCase();
+      if(!q){ renderResultCards(CURRENT_RESULTS); narasiInfo.textContent = `Ditemukan: ${CURRENT_RESULTS.length.toLocaleString('id-ID')} tweet`; return; }
+      const H = NEG_IDX;
+      const fields = ['user_screen_name','text','parent_tweet_text','emosi','intensi','aspek','alasan','sentimen','kind'];
+      const filtered = CURRENT_RESULTS.filter(r=>{
+        return fields.some(f=>{
+          const idx = H[f]; if(idx < 0) return false;
+          const val = r[idx] || '';
+          return String(val).toLowerCase().includes(q);
+        });
+      });
+      renderResultCards(filtered);
+      narasiInfo.textContent = `Ditemukan: ${filtered.length.toLocaleString('id-ID')} / ${CURRENT_RESULTS.length.toLocaleString('id-ID')}`;
+    });
+  
+  })();
+  </script>
+  
+  
 
   </body>
 </html>
